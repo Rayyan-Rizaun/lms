@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<!--
+    UC-10 — a member's own feedback detail: the full submission, the admin
+    response when there is one, and the status history in order. Edit and
+    Withdraw both need their own action button at once, which
+    components/page-header only ever renders one of, so the header below
+    is hand-built the same way catalogue/book-detail.html's own is — every
+    class used (.page-head, .page-head__row, .btn, .btn--*) is the exact
+    markup page-header.html itself renders.
+-->
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${pageTitle} + ' · Library Management System'">Feedback detail · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/toast :: flash(${flashSuccessTitle}, ${flashSuccessMessage}, ${flashErrorTitle}, ${flashErrorMessage})}"></div>
+
+    <div class="page-head">
+        <div class="page-head__row">
+            <div>
+                <h1 th:text="${feedback.subject()}">Subject</h1>
+                <p class="page-head__desc font-mono" th:text="${feedback.reference()}">FB-2026-000000</p>
+            </div>
+            <div class="cluster">
+                <a th:if="${feedback.editable()}" th:href="@{/feedback/{id}/edit(id=${feedback.feedbackId()})}" class="btn btn--secondary">
+                    <svg class="icon icon--sm" aria-hidden="true"><use href="/icons.svg#icon-pencil"></use></svg>
+                    <span>Edit</span>
+                </a>
+                <button type="button" th:if="${feedback.withdrawable()}" class="btn btn--danger" data-modal-trigger="confirm-withdraw">
+                    <svg class="icon icon--sm" aria-hidden="true"><use href="/icons.svg#icon-x"></use></svg>
+                    <span>Withdraw</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <th:block th:if="${feedback.withdrawable()}">
+        <div th:replace="~{components/confirm-dialog :: confirmDialog('confirm-withdraw', 'Withdraw this feedback?',
+                'This closes the submission. It stays on record for reporting, but you cannot reopen or edit it afterwards.',
+                'Withdraw', 'Keep it', @{/feedback/{id}/withdraw(id=${feedback.feedbackId()})}, true)}"></div>
+    </th:block>
+
+    <section class="panel">
+        <div class="panel__header">
+            <h2 class="panel__title">Details</h2>
+        </div>
+        <div class="panel__body" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-16);">
+            <div>
+                <p class="label-upper text-subtle">Category</p>
+                <p th:text="${feedback.categoryName()}">Category</p>
+            </div>
+            <div>
+                <p class="label-upper text-subtle">Priority</p>
+                <p th:text="${feedback.priority()}">Medium</p>
+            </div>
+            <div>
+                <p class="label-upper text-subtle">Status</p>
+                <p><span th:replace="~{components/status-pill :: statusPill('feedback', ${feedback.status()})}"></span></p>
+            </div>
+            <div>
+                <p class="label-upper text-subtle">Submitted</p>
+                <p class="font-mono" th:text="${#temporals.format(feedback.submittedAt(), 'yyyy-MM-dd')}">2026-01-01</p>
+            </div>
+            <div>
+                <p class="label-upper text-subtle">Last updated</p>
+                <p class="font-mono" th:text="${#temporals.format(feedback.updatedAt(), 'yyyy-MM-dd')}">2026-01-01</p>
+            </div>
+        </div>
+        <div class="panel__body" style="padding-top:0;">
+            <p class="label-upper text-subtle">Description</p>
+            <p th:text="${feedback.description()}">Description.</p>
+        </div>
+    </section>
+
+    <section class="panel" th:if="${feedback.adminResponse() != null}">
+        <div class="panel__header">
+            <h2 class="panel__title">Response</h2>
+        </div>
+        <div class="panel__body">
+            <p th:text="${feedback.adminResponse()}">Response text.</p>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel__header">
+            <h2 class="panel__title">Status history</h2>
+        </div>
+        <div class="panel__body" th:if="${not #lists.isEmpty(feedback.history())}">
+            <ul style="display:flex; flex-direction:column; gap: var(--space-16); list-style:none; margin:0; padding:0;">
+                <li th:each="entry : ${feedback.history()}" style="border-left: 2px solid var(--border); padding-left: var(--space-16);">
+                    <p class="font-mono text-subtle" th:text="${#temporals.format(entry.changedAt(), 'yyyy-MM-dd HH:mm')}">2026-01-01 10:00</p>
+                    <p th:if="${entry.statusChanged()}">
+                        Status changed from <strong th:text="${entry.previousStatus()}">Submitted</strong>
+                        to <strong th:text="${entry.newStatus()}">Under Review</strong>
+                        by <span th:text="${entry.changedByName()}">Staff Name</span>.
+                    </p>
+                    <p th:if="${entry.responseChanged()}">
+                        Response from <span th:text="${entry.changedByName()}">Staff Name</span>:
+                    </p>
+                    <p th:if="${entry.responseChanged()}" class="text-subtle" th:text="${entry.newResponse()} ?: '(response cleared)'">Response text.</p>
+                </li>
+            </ul>
+        </div>
+        <div class="panel__body" th:if="${#lists.isEmpty(feedback.history())}">
+            <p class="text-subtle">No changes yet — we will let you know as soon as this is reviewed.</p>
+        </div>
+    </section>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${pageTitle} + ' · Library Management System'">Review detail · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/toast :: flash(${flashSuccessTitle}, ${flashSuccessMessage}, ${flashErrorTitle}, ${flashErrorMessage})}"></div>
+
+    <div class="page-head">
+        <div class="page-head__row">
+            <div>
+                <h1 class="book-title" th:text="${review.bookTitle()}">Title</h1>
+                <p class="page-head__desc" th:text="'Reviewed by ' + ${review.memberName()}">Reviewed by Name</p>
+            </div>
+            <div class="cluster">
+                <button type="button" class="btn btn--primary" th:if="${review.status() == 'Pending'}"
+                        data-modal-trigger="confirm-approve">Approve</button>
+                <button type="button" class="btn btn--danger" th:if="${review.status() == 'Pending'}"
+                        data-modal-trigger="reject-review">Reject</button>
+                <button type="button" class="btn btn--danger" th:if="${review.status() == 'Hidden'}"
+                        data-modal-trigger="confirm-uphold">Uphold flag</button>
+                <button type="button" class="btn btn--primary" th:if="${review.status() == 'Hidden'}"
+                        data-modal-trigger="confirm-dismiss">Dismiss flag</button>
+            </div>
+        </div>
+    </div>
+
+    <th:block th:if="${review.status() == 'Pending'}">
+        <div th:replace="~{components/confirm-dialog :: confirmDialog('confirm-approve', 'Approve this review?',
+                'It becomes visible on the book detail page immediately.',
+                'Approve', 'Cancel', @{/reviews/moderation/{id}/approve(id=${review.reviewId()})}, false)}"></div>
+
+        <div class="modal-backdrop" data-modal="reject-review" hidden>
+            <form class="modal" role="dialog" aria-modal="true" aria-labelledby="reject-review-title"
+                  th:action="@{/reviews/moderation/{id}/reject(id=${review.reviewId()})}" method="post" th:object="${rejectForm}">
+                <div class="modal__header">
+                    <h2 class="modal__title" id="reject-review-title">Reject this review?</h2>
+                    <button type="button" class="icon-btn" data-modal-close aria-label="Close">
+                        <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-x"></use></svg>
+                    </button>
+                </div>
+                <div class="modal__body">
+                    <p style="margin-bottom: var(--space-16);">It stays hidden from the catalogue page.</p>
+                    <div th:replace="~{components/form-field :: formField('reason', 'Reason', 'textarea',
+                            'Shown in the moderation history for this review.', true, null, 4, null)}"></div>
+                </div>
+                <div class="modal__footer">
+                    <button type="button" class="btn btn--secondary" data-modal-close>Cancel</button>
+                    <button type="submit" class="btn btn--danger">Reject review</button>
+                </div>
+            </form>
+        </div>
+    </th:block>
+
+    <th:block th:if="${review.status() == 'Hidden'}">
+        <div th:replace="~{components/confirm-dialog :: confirmDialog('confirm-uphold', 'Uphold this flag?',
+                'The review is removed and stays hidden from the catalogue page.',
+                'Uphold flag', 'Cancel', @{/reviews/moderation/{id}/uphold(id=${review.reviewId()})}, true)}"></div>
+        <div th:replace="~{components/confirm-dialog :: confirmDialog('confirm-dismiss', 'Dismiss this flag?',
+                'The review is approved again and becomes visible on the book detail page.',
+                'Dismiss flag', 'Cancel', @{/reviews/moderation/{id}/dismiss(id=${review.reviewId()})}, false)}"></div>
+    </th:block>
+
+    <section class="panel">
+        <div class="panel__header">
+            <h2 class="panel__title">Review</h2>
+        </div>
+        <div class="panel__body" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-16);">
+            <div>
+                <p class="label-upper text-subtle">Status</p>
+                <p><span th:replace="~{components/status-pill :: statusPill('review', ${review.status()})}"></span></p>
+            </div>
+            <div>
+                <p class="label-upper text-subtle">Rating</p>
+                <p class="font-mono" th:text="${review.rating()} + ' / 5'">4 / 5</p>
+            </div>
+            <div>
+                <p class="label-upper text-subtle">Submitted</p>
+                <p class="font-mono" th:text="${#temporals.format(review.submittedAt(), 'yyyy-MM-dd')}">2026-01-01</p>
+            </div>
+            <div>
+                <p class="label-upper text-subtle">Last updated</p>
+                <p class="font-mono" th:text="${#temporals.format(review.updatedAt(), 'yyyy-MM-dd')}">2026-01-01</p>
+            </div>
+        </div>
+        <div class="panel__body" style="padding-top:0;">
+            <p class="label-upper text-subtle">Text</p>
+            <p th:text="${review.reviewText()} ?: 'No written review.'">Review text.</p>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel__header">
+            <h2 class="panel__title">Flags</h2>
+        </div>
+        <div th:if="${not #lists.isEmpty(review.flags())}" class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Reported by</th>
+                        <th scope="col">Reason</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="data-table__col-right">Reported</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="flag : ${review.flags()}">
+                        <td th:text="${flag.reportedByName()}">Name</td>
+                        <td th:text="${flag.reason()}">Reason.</td>
+                        <td><span th:replace="~{components/status-pill :: statusPill('flag', ${flag.status()})}"></span></td>
+                        <td class="data-table__col-right font-mono" th:text="${#temporals.format(flag.reportedAt(), 'yyyy-MM-dd')}">2026-01-01</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div th:if="${#lists.isEmpty(review.flags())}" class="panel__body">
+            <p class="text-subtle">No flags on this review.</p>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel__header">
+            <h2 class="panel__title">Moderation history</h2>
+        </div>
+        <div th:if="${not #lists.isEmpty(review.history())}" class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Moderator</th>
+                        <th scope="col">Change</th>
+                        <th scope="col">Reason</th>
+                        <th scope="col" class="data-table__col-right">When</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="entry : ${review.history()}">
+                        <td th:text="${entry.moderatorName()}">System</td>
+                        <td th:text="${entry.previousStatus()} + ' → ' + ${entry.newStatus()}">Pending → Approved</td>
+                        <td th:text="${entry.reason()} ?: '—'">Reason.</td>
+                        <td class="data-table__col-right font-mono" th:text="${#temporals.format(entry.moderatedAt(), 'yyyy-MM-dd HH:mm')}">2026-01-01 10:00</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div th:if="${#lists.isEmpty(review.history())}" class="panel__body">
+            <p class="text-subtle">No moderation decisions yet.</p>
+        </div>
+    </section>
+
+</div>
+</body>
+</html>

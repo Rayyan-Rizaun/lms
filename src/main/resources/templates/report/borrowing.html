@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${pageTitle} + ' · Library Management System'">Borrowing Report · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/toast :: flash(${flashSuccessTitle}, ${flashSuccessMessage}, ${flashErrorTitle}, ${flashErrorMessage})}"></div>
+
+    <div th:replace="~{components/page-header :: pageHeader('Borrowing Report', 'Loans issued in the period, by member type and category.', 'All Reports', @{/reports}, null)}"></div>
+
+    <section class="panel">
+        <div class="panel__body">
+            <form method="get" th:action="@{/reports/borrowing}" class="cluster" style="align-items:flex-end;">
+                <div class="form-field" style="margin:0;">
+                    <label class="form-field__label" for="from">From</label>
+                    <input type="date" id="from" name="from" th:value="${from}" class="form-field__input" />
+                </div>
+                <div class="form-field" style="margin:0;">
+                    <label class="form-field__label" for="to">To</label>
+                    <input type="date" id="to" name="to" th:value="${to}" class="form-field__input" />
+                </div>
+                <div class="form-field" style="flex:1 1 160px; margin:0;">
+                    <label class="form-field__label" for="memberType">Member type</label>
+                    <select id="memberType" name="memberType" class="form-field__select">
+                        <option th:each="opt : ${memberTypeOptions}" th:value="${opt.value()}" th:text="${opt.label()}"
+                                th:selected="${opt.value() == (memberType != null ? memberType : '')}">Type</option>
+                    </select>
+                </div>
+                <div class="form-field" style="flex:1 1 200px; margin:0;">
+                    <label class="form-field__label" for="categoryId">Category</label>
+                    <select id="categoryId" name="categoryId" class="form-field__select">
+                        <option th:each="opt : ${categoryOptions}" th:value="${opt.value()}" th:text="${opt.label()}"
+                                th:selected="${opt.value() == (categoryId != null ? categoryId.toString() : '')}">Category</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn--primary">Run report</button>
+            </form>
+        </div>
+    </section>
+
+    <div th:replace="~{components/stat-tile :: statTileRow(${tiles})}"></div>
+
+    <section class="panel">
+        <div th:replace="~{components/data-table :: dataTable(${columns}, ${rows}, ~{report/report-fragments :: borrowingRow},
+                null, null, 'arrow-left-right', 'No loans match these filters.', null, null)}"></div>
+    </section>
+
+</div>
+</body>
+</html>
