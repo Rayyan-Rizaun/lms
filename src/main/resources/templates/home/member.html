@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title>Dashboard · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/toast :: flash(${flashSuccessTitle}, ${flashSuccessMessage}, ${flashErrorTitle}, ${flashErrorMessage})}"></div>
+
+    <div th:replace="~{components/page-header :: pageHeader('Dashboard', 'Your loans, reservations and fines, at a glance.', null, null, null)}"></div>
+
+    <div th:if="${dashboard == null}">
+        <div th:replace="~{components/empty-state :: emptyState('circle-user', 'Your membership could not be found.', null, null)}"></div>
+    </div>
+
+    <th:block th:if="${dashboard != null}">
+
+        <div th:replace="~{components/stat-tile :: statTileRow(${dashboard.tiles()})}"></div>
+
+        <div class="layout-grid">
+            <section class="panel">
+                <div class="panel__header"><h2 class="panel__title">My Current Loans</h2></div>
+                <div class="panel__body" th:if="${#lists.isEmpty(dashboard.currentLoans())}">
+                    <div th:replace="~{components/empty-state :: emptyState('book-open', 'You have no books borrowed right now.', 'Browse the catalogue', @{/catalogue/books})}"></div>
+                </div>
+                <div class="data-table-container" th:unless="${#lists.isEmpty(dashboard.currentLoans())}">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Book</th>
+                                <th scope="col" class="data-table__col-right">Due date</th>
+                                <th scope="col">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="row : ${dashboard.currentLoans()}">
+                                <td><span class="book-title" th:text="${row.bookTitle()}">Title</span></td>
+                                <td class="data-table__col-right font-mono" th:text="${#temporals.format(row.dueAt(), 'yyyy-MM-dd')}">2026-01-01</td>
+                                <td><span th:replace="~{components/status-pill :: statusPill('loan', ${row.pillStatus()})}"></span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel__header"><h2 class="panel__title">My Reservations</h2></div>
+                <div class="panel__body" th:if="${#lists.isEmpty(dashboard.reservations())}">
+                    <div th:replace="~{components/empty-state :: emptyState('inbox', 'You have no active reservations.', null, null)}"></div>
+                </div>
+                <div class="data-table-container" th:unless="${#lists.isEmpty(dashboard.reservations())}">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Book</th>
+                                <th scope="col">Status</th>
+                                <th scope="col" class="data-table__col-right">Queue position</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="row : ${dashboard.reservations()}">
+                                <td><span class="book-title" th:text="${row.bookTitle()}">Title</span></td>
+                                <td><span th:replace="~{components/status-pill :: statusPill('reservation', ${row.status()})}"></span></td>
+                                <td class="data-table__col-right font-mono" th:text="${row.queuePosition()} ?: '—'">1</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel__header"><h2 class="panel__title">My Unpaid Fines</h2></div>
+                <div class="panel__body" th:if="${#lists.isEmpty(dashboard.unpaidFines())}">
+                    <div th:replace="~{components/empty-state :: emptyState('circle-check', 'No fines on this account.', null, null)}"></div>
+                </div>
+                <div class="data-table-container" th:unless="${#lists.isEmpty(dashboard.unpaidFines())}">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Book</th>
+                                <th scope="col">Type</th>
+                                <th scope="col" class="data-table__col-right">Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="row : ${dashboard.unpaidFines()}">
+                                <td><span class="book-title" th:text="${row.bookTitle()}">Title</span></td>
+                                <td th:text="${row.fineType()}">Overdue</td>
+                                <td class="data-table__col-right font-mono" th:text="${row.balance()}">100.00</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+    </th:block>
+
+</div>
+</body>
+</html>
