@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title>Dashboard · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/toast :: flash(${flashSuccessTitle}, ${flashSuccessMessage}, ${flashErrorTitle}, ${flashErrorMessage})}"></div>
+
+    <div th:replace="~{components/page-header :: pageHeader('Dashboard', 'Circulation at the desk, today.', null, null, null)}"></div>
+
+    <div th:replace="~{components/stat-tile :: statTileRow(${dashboard.tiles()})}"></div>
+
+    <div class="layout-grid">
+        <section class="panel">
+            <div class="panel__header"><h2 class="panel__title">Loans per day</h2></div>
+            <div th:if="${dashboard.loansPerDay().isEmpty()}" class="chart-container chart-container--empty">
+                <div th:replace="~{components/empty-state :: emptyState('chart-column', 'No loans issued in the last 14 days yet.', null, null)}"></div>
+            </div>
+            <div th:unless="${dashboard.loansPerDay().isEmpty()}" class="chart-container">
+                <canvas id="chart-loans-per-day"></canvas>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel__header"><h2 class="panel__title">Most-borrowed titles this month</h2></div>
+            <div th:if="${dashboard.mostBorrowedTitles().isEmpty()}" class="chart-container chart-container--empty">
+                <div th:replace="~{components/empty-state :: emptyState('arrow-left-right', 'No loans this month yet.', null, null)}"></div>
+            </div>
+            <div th:unless="${dashboard.mostBorrowedTitles().isEmpty()}" class="chart-container">
+                <canvas id="chart-most-borrowed"></canvas>
+            </div>
+        </section>
+    </div>
+
+    <div class="layout-grid">
+        <section class="panel">
+            <div class="panel__header"><h2 class="panel__title">Today's Overdue Loans</h2></div>
+            <div class="panel__body" th:if="${#lists.isEmpty(dashboard.todaysOverdueLoans())}">
+                <div th:replace="~{components/empty-state :: emptyState('circle-check', 'No overdue loans right now.', null, null)}"></div>
+            </div>
+            <div class="data-table-container" th:unless="${#lists.isEmpty(dashboard.todaysOverdueLoans())}">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Member</th>
+                            <th scope="col">Book</th>
+                            <th scope="col" class="data-table__col-right">Due at</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="row : ${dashboard.todaysOverdueLoans()}">
+                            <td th:text="${row.memberName()}">Name</td>
+                            <td><span class="book-title" th:text="${row.bookTitle()}">Title</span></td>
+                            <td class="data-table__col-right font-mono" th:text="${#temporals.format(row.dueAt(), 'yyyy-MM-dd')}">2026-01-01</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel__header"><h2 class="panel__title">Reservations Awaiting Collection</h2></div>
+            <div class="panel__body" th:if="${#lists.isEmpty(dashboard.reservationsAwaitingCollection())}">
+                <div th:replace="~{components/empty-state :: emptyState('inbox', 'No holds are waiting for collection.', null, null)}"></div>
+            </div>
+            <div class="data-table-container" th:unless="${#lists.isEmpty(dashboard.reservationsAwaitingCollection())}">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Member</th>
+                            <th scope="col">Book</th>
+                            <th scope="col" class="data-table__col-right">Expires</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="row : ${dashboard.reservationsAwaitingCollection()}">
+                            <td th:text="${row.memberName()}">Name</td>
+                            <td><span class="book-title" th:text="${row.bookTitle()}">Title</span></td>
+                            <td class="data-table__col-right font-mono" th:text="${#temporals.format(row.expiresAt(), 'yyyy-MM-dd')}">2026-01-01</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script th:src="@{/js/chart.umd.min.js}"></script>
+    <script th:src="@{/js/charts.js}"></script>
+    <script th:inline="javascript">
+    /*<![CDATA[*/
+        const loansPerDay = /*[[${dashboard.loansPerDay()}]]*/ {labels:[],datasets:[]};
+        const mostBorrowed = /*[[${dashboard.mostBorrowedTitles()}]]*/ {labels:[],datasets:[]};
+
+        if (loansPerDay.labels.length) {
+            LMS.charts.bar('chart-loans-per-day', loansPerDay, {title: 'Loans issued, last 14 days', yTitle: 'Loans'});
+        }
+        if (mostBorrowed.labels.length) {
+            LMS.charts.horizontalBar('chart-most-borrowed', mostBorrowed, {title: 'Most-borrowed titles this month', xTitle: 'Times borrowed'});
+        }
+    /*]]>*/
+    </script>
+
+</div>
+
+</body>
+</html>
