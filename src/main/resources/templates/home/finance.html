@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title>Dashboard · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/toast :: flash(${flashSuccessTitle}, ${flashSuccessMessage}, ${flashErrorTitle}, ${flashErrorMessage})}"></div>
+
+    <div th:replace="~{components/page-header :: pageHeader('Dashboard', 'Fines, collections and appeals, at a glance.', null, null, null)}"></div>
+
+    <div th:replace="~{components/stat-tile :: statTileRow(${dashboard.tiles()})}"></div>
+
+    <div class="layout-grid">
+        <section class="panel">
+            <div class="panel__header"><h2 class="panel__title">Fines by type</h2></div>
+            <div th:if="${dashboard.finesByType().isEmpty()}" class="chart-container chart-container--empty">
+                <div th:replace="~{components/empty-state :: emptyState('wallet', 'No fines assessed yet.', null, null)}"></div>
+            </div>
+            <div th:unless="${dashboard.finesByType().isEmpty()}" class="chart-container">
+                <canvas id="chart-fines-by-type"></canvas>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel__header"><h2 class="panel__title">Collections per week</h2></div>
+            <div th:if="${dashboard.collectionsPerWeek().isEmpty()}" class="chart-container chart-container--empty">
+                <div th:replace="~{components/empty-state :: emptyState('chart-column', 'No payments collected in the last 8 weeks yet.', null, null)}"></div>
+            </div>
+            <div th:unless="${dashboard.collectionsPerWeek().isEmpty()}" class="chart-container">
+                <canvas id="chart-collections"></canvas>
+            </div>
+        </section>
+    </div>
+
+    <div class="layout-grid">
+        <section class="panel">
+            <div class="panel__header"><h2 class="panel__title">Largest Outstanding Fines</h2></div>
+            <div class="panel__body" th:if="${#lists.isEmpty(dashboard.largestOutstandingFines())}">
+                <div th:replace="~{components/empty-state :: emptyState('circle-check', 'Nothing is currently outstanding.', null, null)}"></div>
+            </div>
+            <div class="data-table-container" th:unless="${#lists.isEmpty(dashboard.largestOutstandingFines())}">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Member</th>
+                            <th scope="col">Type</th>
+                            <th scope="col" class="data-table__col-right">Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="row : ${dashboard.largestOutstandingFines()}">
+                            <td><a th:href="@{/fines}" th:text="${row.memberName()}">Name</a></td>
+                            <td th:text="${row.fineType()}">Overdue</td>
+                            <td class="data-table__col-right font-mono" th:text="${row.balance()}">100.00</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel__header"><h2 class="panel__title">Pending Appeals</h2></div>
+            <div class="panel__body" th:if="${#lists.isEmpty(dashboard.pendingAppeals())}">
+                <div th:replace="~{components/empty-state :: emptyState('octagon-alert', 'No pending appeals right now.', null, null)}"></div>
+            </div>
+            <div class="data-table-container" th:unless="${#lists.isEmpty(dashboard.pendingAppeals())}">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Member</th>
+                            <th scope="col">Type</th>
+                            <th scope="col" class="data-table__col-right">Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="row : ${dashboard.pendingAppeals()}">
+                            <td><a th:href="@{/fines/appeals}" th:text="${row.memberName()}">Name</a></td>
+                            <td th:text="${row.fineType()}">Overdue</td>
+                            <td class="data-table__col-right font-mono" th:text="${row.balance()}">100.00</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script th:src="@{/js/chart.umd.min.js}"></script>
+    <script th:src="@{/js/charts.js}"></script>
+    <script th:inline="javascript">
+    /*<![CDATA[*/
+        const finesByType = /*[[${dashboard.finesByType()}]]*/ {labels:[],datasets:[]};
+        const collectionsPerWeek = /*[[${dashboard.collectionsPerWeek()}]]*/ {labels:[],datasets:[]};
+
+        if (finesByType.labels.length) {
+            const typeColorOf = {
+                'Overdue': LMS.charts.cssVar('--primary'),
+                'Lost': LMS.charts.cssVar('--overdue'),
+                'Damaged': LMS.charts.cssVar('--due-soon')
+            };
+            LMS.charts.doughnut('chart-fines-by-type', finesByType, {
+                title: 'Fines assessed by type',
+                colors: finesByType.labels.map(l => typeColorOf[l] || LMS.charts.cssVar('--ink-3'))
+            });
+        }
+        if (collectionsPerWeek.labels.length) {
+            LMS.charts.line('chart-collections', collectionsPerWeek, {title: 'Collections, last 8 weeks', yTitle: 'LKR', color: LMS.charts.cssVar('--accent')});
+        }
+    /*]]>*/
+    </script>
+
+</div>
+
+</body>
+</html>
