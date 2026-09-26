@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<!--
+    UC-04 — staff "Reservation Queue": every open (Waiting/Ready)
+    reservation, grouped by title in queue order, with the Ready /
+    Fulfilled / Expire / Cancel actions the scenario's main and
+    alternative flows call for. Each title gets its own small table rather
+    than one shared components/data-table, the same hand-rolled
+    `class="data-table"` pattern already used by borrowing/loans.html and
+    fine/outstanding.html for a plain (non-sortable) listing.
+
+    The two confirm-dialog calls below split their th:if from their
+    th:replace across a <th:block> wrapper and a plain child <div> —
+    components/README.md gotcha #2 — because Fulfilled and Expire are both
+    terminal, no-undo transitions; Ready is not (a wrong Ready can be
+    walked back with Expire), so it stays a plain submit button.
+
+    Cancel is unconditional — every row on this page is already Waiting or
+    Ready by construction (queueForStaff only ever fetches those two
+    statuses), so there is no already-closed case to hide it for. It needs
+    a free-text reason, which components/confirm-dialog has no field for;
+    components/modal.html also does not fit as-is, because it renders its
+    body and footer as two SIBLING <div>s (.modal__body / .modal__footer),
+    not one inside the other, so a single <form> spanning both — the
+    reason field and the submit button — cannot wrap through that
+    fragment call. The cancel modal below is hand-built instead, reusing
+    modal.html's own CSS classes and [data-modal]/[data-modal-trigger]/
+    [data-modal-close] contract verbatim (the same "same markup, no
+    fragment call" precedent as catalogue/book-detail.html's hand-built
+    page-head), with ONE <form> wrapping header through footer so the
+    reason field and Confirm button are genuinely one HTML form.
+-->
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${pageTitle} + ' · Library Management System'">Reservation Queue · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/toast :: flash(${flashSuccessTitle}, ${flashSuccessMessage}, ${flashErrorTitle}, ${flashErrorMessage})}"></div>
+
+    <div th:replace="~{components/page-header :: pageHeader('Reservation Queue', 'Waiting and held reservations, grouped by title.', null, null, null)}"></div>
+
+    <div th:if="${#lists.isEmpty(groups)}">
+        <div th:replace="~{components/empty-state :: emptyState('calendar-clock', 'No one is waiting on a title right now.', null, null)}"></div>
+    </div>
+
+    <section class="panel" th:each="group : ${groups}">
+        <div class="panel__header">
+            <h2 class="panel__title book-title" th:text="${group.bookTitle()}">Title</h2>
+        </div>
+
+        <div class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Member</th>
+                        <th scope="col" class="data-table__col-right">Requested</th>
+                        <th scope="col" class="data-table__col-right">Queue position</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="data-table__col-right">Collect by</th>
+                        <th scope="col"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="row : ${group.rows()}">
+                        <td th:text="${row.memberName()}">Member Name</td>
+                        <td class="data-table__col-right font-mono" th:text="${#temporals.format(row.requestedAt(), 'yyyy-MM-dd')}">2026-01-01</td>
+                        <td class="data-table__col-right font-mono" th:text="${row.queuePosition()} ?: '—'">1</td>
+                        <td><span th:replace="~{components/status-pill :: statusPill('reservation', ${row.status()})}"></span></td>
+                        <td class="data-table__col-right font-mono"
+                            th:text="${row.expiresAt() != null} ? ${#temporals.format(row.expiresAt(), 'yyyy-MM-dd')} : '—'">—</td>
+                        <td>
+                            <div class="cluster">
+                                <form th:if="${row.canMarkReady()}" th:action="@{/reservations/{id}/ready(id=${row.reservationId()})}" method="post">
+                                    <button type="submit" class="btn btn--secondary">Mark ready</button>
+                                </form>
+                                <button type="button" class="btn btn--secondary" th:if="${row.canFulfill()}"
+                                        th:attr="data-modal-trigger=${'confirm-fulfill-' + row.reservationId()}">
+                                    Confirm collected
+                                </button>
+                                <button type="button" class="btn btn--danger" th:if="${row.canExpire()}"
+                                        th:attr="data-modal-trigger=${'confirm-expire-' + row.reservationId()}">
+                                    Expire hold
+                                </button>
+                                <button type="button" class="btn btn--danger"
+                                        th:attr="data-modal-trigger=${'cancel-' + row.reservationId()}">
+                                    Cancel
+                                </button>
+                            </div>
+
+                            <th:block th:if="${row.canFulfill()}">
+                                <div th:replace="~{components/confirm-dialog :: confirmDialog(${'confirm-fulfill-' + row.reservationId()},
+                                        'Confirm this collection?',
+                                        ${'This marks the hold on ' + group.bookTitle() + ' as collected by ' + row.memberName() + '.'},
+                                        'Confirm collected', 'Cancel', @{/reservations/{id}/fulfill(id=${row.reservationId()})}, false)}"></div>
+                            </th:block>
+
+                            <th:block th:if="${row.canExpire()}">
+                                <div th:replace="~{components/confirm-dialog :: confirmDialog(${'confirm-expire-' + row.reservationId()},
+                                        'Expire this hold?',
+                                        ${'The hold on ' + group.bookTitle() + ' for ' + row.memberName() + ' will end, and the next member in the queue becomes eligible. This cannot be undone.'},
+                                        'Expire hold', 'Keep hold', @{/reservations/{id}/expire(id=${row.reservationId()})}, true)}"></div>
+                            </th:block>
+
+                            <!-- Hand-built modal — see this file's own header comment for why
+                                 components/modal.html's split body/footer divs can't carry one
+                                 real <form> across both. -->
+                            <div class="modal-backdrop" th:attr="data-modal=${'cancel-' + row.reservationId()}" hidden>
+                                <form class="modal" role="dialog" aria-modal="true"
+                                      th:attr="aria-labelledby=${'cancel-' + row.reservationId() + '-title'}"
+                                      th:action="@{/reservations/{id}/staff-cancel(id=${row.reservationId()})}" method="post">
+                                    <div class="modal__header">
+                                        <h2 class="modal__title" th:id="${'cancel-' + row.reservationId() + '-title'}">Cancel this reservation?</h2>
+                                        <button type="button" class="icon-btn" data-modal-close aria-label="Close">
+                                            <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-x"></use></svg>
+                                        </button>
+                                    </div>
+                                    <div class="modal__body">
+                                        <p style="margin-bottom: var(--space-16);"
+                                           th:text="${'This ends the hold on ' + group.bookTitle() + ' for ' + row.memberName() + '. They will be told why.'}">
+                                            This ends the reservation. They will be told why.
+                                        </p>
+                                        <div class="form-field">
+                                            <label class="form-field__label" th:for="${'cancel-reason-' + row.reservationId()}">Reason *</label>
+                                            <textarea th:id="${'cancel-reason-' + row.reservationId()}" name="reason" rows="3" required
+                                                      class="form-field__textarea"></textarea>
+                                            <p class="form-field__help">Shown to the member in their cancellation notice.</p>
+                                        </div>
+                                    </div>
+                                    <div class="modal__footer">
+                                        <button type="button" class="btn btn--secondary" data-modal-close>Keep it</button>
+                                        <button type="submit" class="btn btn--danger">Cancel reservation</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+</div>
+</body>
+</html>
