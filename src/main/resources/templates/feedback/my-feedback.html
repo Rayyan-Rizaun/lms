@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<!-- UC-10 — "My Feedback": reference, category, subject, status pill, submitted date. -->
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${pageTitle} + ' · Library Management System'">My Feedback · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/toast :: flash(${flashSuccessTitle}, ${flashSuccessMessage}, ${flashErrorTitle}, ${flashErrorMessage})}"></div>
+
+    <div th:replace="~{components/page-header :: pageHeader('My Feedback', 'Everything you have submitted.', 'Submit Feedback', @{/feedback/new}, 'plus')}"></div>
+
+    <section class="panel">
+        <div th:if="${not #lists.isEmpty(rows)}" class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Reference</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Subject</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="data-table__col-right">Submitted</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="row : ${rows}">
+                        <td><a class="font-mono" th:href="@{/feedback/{id}(id=${row.feedbackId()})}" th:text="${row.reference()}">FB-2026-000000</a></td>
+                        <td th:text="${row.categoryName()}">Category</td>
+                        <td th:text="${row.subject()}">Subject</td>
+                        <td><span th:replace="~{components/status-pill :: statusPill('feedback', ${row.status()})}"></span></td>
+                        <td class="data-table__col-right font-mono" th:text="${#temporals.format(row.submittedAt(), 'yyyy-MM-dd')}">2026-01-01</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div th:if="${#lists.isEmpty(rows)}">
+            <div th:replace="~{components/empty-state :: emptyState('message-square', 'You have not submitted any feedback yet.', 'Submit Feedback', @{/feedback/new})}"></div>
+        </div>
+    </section>
+
+</div>
+</body>
+</html>
