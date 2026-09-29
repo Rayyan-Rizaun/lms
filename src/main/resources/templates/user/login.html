@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<!--
+    Sign-in page. Deliberately NOT built on layout/base.html :: shell — that
+    layout is the signed-in app shell (sidebar + topbar), and showing a
+    logged-out visitor a sidebar full of navigation they cannot use yet
+    would be wrong. This is instead a small standalone page reusing the
+    same stylesheet, fonts and icon sprite, centred with the --modal-width
+    token (an existing dimension, not a new one — see app.css §2) rather
+    than a page-specific width nobody else uses.
+
+    The email/password inputs below are hand-built with the SAME classes
+    components/form-field.html uses (.form-field, .form-field__label,
+    .form-field__input) rather than that fragment itself — form-field's
+    contract requires a th:object-bound command (see its own header
+    comment), and this form has none by design: Spring Security's form-login
+    filter reads the raw "email" / "password" request parameters directly,
+    with no Spring MVC model binding involved. Reusing the classes keeps the
+    same visual component without pretending to a binding that isn't there.
+-->
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+        (function () {
+            try {
+                var saved = localStorage.getItem('lms-theme');
+                if (saved === 'light' || saved === 'dark') {
+                    document.documentElement.setAttribute('data-theme', saved);
+                }
+            } catch (e) { /* localStorage unavailable — OS preference applies */ }
+        })();
+    </script>
+    <title th:text="${pageTitle} + ' · Library Management System'">Sign in · Library Management System</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}" />
+</head>
+<body>
+<div class="content" style="max-width: var(--modal-width); margin-inline: auto;">
+
+    <div th:replace="~{components/toast :: flash(${flashSuccessTitle}, ${flashSuccessMessage}, null, null)}"></div>
+
+    <div class="sidebar__brand" style="justify-content: center; padding-block: var(--space-24);">
+        <svg class="icon icon--sm" aria-hidden="true"><use href="/icons.svg#icon-library-big"></use></svg>
+        <span class="sidebar__brand-name">Library Management System</span>
+    </div>
+
+    <section class="panel">
+        <div class="panel__header">
+            <h1 class="panel__title">Sign in</h1>
+        </div>
+        <div class="panel__body" style="display:flex; flex-direction:column; gap: var(--space-16);">
+
+            <p th:if="${param.logout}" class="form-field__help">You have been signed out.</p>
+
+            <div th:if="${param.error}" style="display:flex; gap: var(--space-8); align-items:flex-start;">
+                <svg class="icon" aria-hidden="true" style="color: var(--overdue); flex-shrink:0;">
+                    <use href="/icons.svg#icon-triangle-alert"></use>
+                </svg>
+                <p class="form-field__error" th:switch="${param.error[0]}">
+                    <span th:case="'AccountLocked'">This account is locked after too many failed attempts. A librarian or administrator can unlock it.</span>
+                    <span th:case="'AccountDeactivated'">This account has been deactivated.</span>
+                    <span th:case="*">Incorrect email or password.</span>
+                </p>
+            </div>
+
+            <form th:action="@{/login}" method="post" style="display:flex; flex-direction:column; gap: var(--space-16);">
+                <div class="form-field">
+                    <label for="email" class="form-field__label">Email</label>
+                    <input type="email" id="email" name="email" class="form-field__input" required autofocus autocomplete="username" />
+                </div>
+                <div class="form-field">
+                    <label for="password" class="form-field__label">Password</label>
+                    <input type="password" id="password" name="password" class="form-field__input" required autocomplete="current-password" />
+                </div>
+                <button type="submit" class="btn btn--primary">
+                    <svg class="icon icon--sm" aria-hidden="true"><use href="/icons.svg#icon-log-in"></use></svg>
+                    Sign in
+                </button>
+            </form>
+
+            <a th:href="@{/forgot-password}">Forgot your password?</a>
+        </div>
+    </section>
+
+    <p style="text-align:center; padding-block: var(--space-16); color: var(--ink-2);">
+        New here? <a th:href="@{/register}">Create an account</a>
+        &nbsp;·&nbsp;
+        <a th:href="@{/catalogue/books}">Browse the catalogue</a>
+    </p>
+</div>
+
+<div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="false"></div>
+<script th:src="@{/js/app-shell.js}"></script>
+</body>
+</html>

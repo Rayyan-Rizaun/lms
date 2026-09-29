@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${pageTitle} + ' · Library Management System'">Membership Approval · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/toast :: flash(${flashSuccessTitle}, ${flashSuccessMessage}, ${flashErrorTitle}, ${flashErrorMessage})}"></div>
+
+    <div th:replace="~{components/page-header :: pageHeader('Membership Approval', 'New self-registrations awaiting a decision.', 'All Members', @{/users/all}, null)}"></div>
+
+    <section class="panel">
+        <div class="panel__body">
+            <div class="cluster">
+                <a th:href="@{/users/pending(view='pending')}" class="btn"
+                   th:classappend="${view == 'pending'} ? 'btn--primary' : 'btn--secondary'"
+                   th:text="${'Pending (' + pendingCount + ')'}">Pending</a>
+                <a th:href="@{/users/pending(view='rejected')}" class="btn"
+                   th:classappend="${view == 'rejected'} ? 'btn--primary' : 'btn--secondary'"
+                   th:text="${'Rejected (' + rejectedCount + ')'}">Rejected</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div th:if="${view == 'pending'}">
+            <div th:replace="~{components/data-table :: dataTable(${columns}, ${rows}, ~{user/member-fragments :: pendingRow},
+                     null, null, 'user-plus', 'No registrations are waiting on a decision.', null, null)}"></div>
+        </div>
+        <div th:if="${view == 'rejected'}">
+            <div th:replace="~{components/data-table :: dataTable(${columns}, ${rows}, ~{user/member-fragments :: rejectedRow},
+                     null, null, 'users', 'No registrations have been rejected.', null, null)}"></div>
+        </div>
+    </section>
+
+</div>
+</body>
+</html>
