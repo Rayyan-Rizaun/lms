@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<!-- UC-02 reference data — staff-only maintenance list for Publisher. Same shape as authors.html. -->
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${pageTitle} + ' · Library Management System'">Publishers · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/toast :: flash(${flashSuccessTitle}, ${flashSuccessMessage}, ${flashErrorTitle}, ${flashErrorMessage})}"></div>
+
+    <div th:replace="~{components/page-header :: pageHeader('Publishers', 'Reference data for the Book form.', 'Add publisher', @{/catalogue/publishers/new}, 'plus')}"></div>
+
+    <section class="panel">
+        <div th:if="${not #lists.isEmpty(publishers)}" class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">Website</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="publisher : ${publishers}">
+                        <td th:text="${publisher.publisherName}">Name</td>
+                        <td>
+                            <a th:if="${publisher.website != null}" th:href="${publisher.website}" th:text="${publisher.website}" target="_blank" rel="noopener">https://example.com</a>
+                            <span th:if="${publisher.website == null}" class="text-subtle">—</span>
+                        </td>
+                        <td th:text="${publisher.active} ? 'Active' : 'Inactive'">Active</td>
+                        <td>
+                            <div class="cluster">
+                                <a th:href="@{/catalogue/publishers/{id}/edit(id=${publisher.publisherId})}" class="icon-btn" aria-label="Edit publisher">
+                                    <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-pencil"></use></svg>
+                                </a>
+                                <button type="button" class="icon-btn" aria-label="Deactivate publisher" th:if="${publisher.active}"
+                                        th:attr="data-modal-trigger=${'confirm-deactivate-publisher-' + publisher.publisherId}">
+                                    <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-archive"></use></svg>
+                                </button>
+                            </div>
+                            <div th:if="${publisher.active}"
+                                 th:replace="~{components/confirm-dialog :: confirmDialog(${'confirm-deactivate-publisher-' + publisher.publisherId},
+                                         'Deactivate this publisher?', ${publisher.publisherName + ' will no longer be offered on the Book form.'},
+                                         'Deactivate', 'Cancel', @{/catalogue/publishers/{id}/deactivate(id=${publisher.publisherId})}, true)}"></div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div th:if="${#lists.isEmpty(publishers)}">
+            <div th:replace="~{components/empty-state :: emptyState('building', 'No publishers yet.', 'Add publisher', @{/catalogue/publishers/new})}"></div>
+        </div>
+    </section>
+
+</div>
+</body>
+</html>
