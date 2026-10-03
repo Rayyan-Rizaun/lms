@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<!-- UC-02 reference data — staff-only maintenance list for Author. No status-pill: "active/inactive" here
+     is a plain boolean, not one of the fourteen documented status-pill domains, so it is shown as plain text
+     rather than guessing a fifteenth pill colour (templates/components/README.md's own instruction). -->
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${pageTitle} + ' · Library Management System'">Authors · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/toast :: flash(${flashSuccessTitle}, ${flashSuccessMessage}, ${flashErrorTitle}, ${flashErrorMessage})}"></div>
+
+    <div th:replace="~{components/page-header :: pageHeader('Authors', 'Reference data for the Book form.', 'Add author', @{/catalogue/authors/new}, 'plus')}"></div>
+
+    <section class="panel">
+        <div th:if="${not #lists.isEmpty(authors)}" class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="author : ${authors}">
+                        <td th:text="${author.authorName}">Name</td>
+                        <td th:text="${author.active} ? 'Active' : 'Inactive'">Active</td>
+                        <td>
+                            <div class="cluster">
+                                <a th:href="@{/catalogue/authors/{id}/edit(id=${author.authorId})}" class="icon-btn" aria-label="Edit author">
+                                    <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-pencil"></use></svg>
+                                </a>
+                                <button type="button" class="icon-btn" aria-label="Deactivate author" th:if="${author.active}"
+                                        th:attr="data-modal-trigger=${'confirm-deactivate-author-' + author.authorId}">
+                                    <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-archive"></use></svg>
+                                </button>
+                            </div>
+                            <div th:if="${author.active}"
+                                 th:replace="~{components/confirm-dialog :: confirmDialog(${'confirm-deactivate-author-' + author.authorId},
+                                         'Deactivate this author?', ${author.authorName + ' will no longer be offered on the Book form.'},
+                                         'Deactivate', 'Cancel', @{/catalogue/authors/{id}/deactivate(id=${author.authorId})}, true)}"></div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div th:if="${#lists.isEmpty(authors)}">
+            <div th:replace="~{components/empty-state :: emptyState('user', 'No authors yet.', 'Add author', @{/catalogue/authors/new})}"></div>
+        </div>
+    </section>
+
+</div>
+</body>
+</html>
