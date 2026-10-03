@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<!--
+    UC-02 / PB-22, PB-23 — the public book detail page: every copy with its
+    status pill, availability and shelf location, reachable without logging
+    in. Staff (Librarian / Library Administrator) additionally see Edit,
+    Add Copy, and per-copy Edit/Withdraw actions; a guest sees none of them
+    — not disabled versions, genuinely absent (design-system.md §4's rule
+    for staff-only UI, applied here to actions rather than nav).
+
+    The <h1> is hand-built rather than components/page-header, purely to
+    add one class that fragment's own <h1> has no parameter for:
+    .book-title, applying design-system.md §2's rule with no stated
+    exception ("any element rendering a book's title uses the serif").
+    Every other class below (.page-head, .page-head__row, .btn, .btn--
+    primary) is the exact same markup page-header.html itself renders —
+    this only adds .book-title to the one element that needed it.
+-->
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${book.title} + ' · Library Management System'">Book · Library Management System</title>
+</head>
+<body>
+<div id="content" th:with="isStaff=${authenticated and (currentRoleNames.contains('Librarian') or currentRoleNames.contains('Library Administrator'))}">
+
+    <div th:replace="~{components/toast :: flash(${flashSuccessTitle}, ${flashSuccessMessage}, ${flashErrorTitle}, ${flashErrorMessage})}"></div>
+
+    <div class="page-head">
+        <div class="page-head__row">
+            <div>
+                <h1 class="book-title" th:text="${book.title}">Title</h1>
+                <p th:if="${book.subtitle != null}" class="page-head__desc" th:text="${book.subtitle}">Subtitle</p>
+            </div>
+            <a th:if="${isStaff}" th:href="@{/catalogue/books/{id}/edit(id=${book.bookId})}" class="btn btn--primary">
+                <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-pencil"></use></svg>
+                <span>Edit book</span>
+            </a>
+        </div>
+    </div>
+
+    <p th:unless="${book.active}" class="text-subtle">This title is not currently active in the catalogue — it no longer appears in search.</p>
+
+    <section class="panel">
+        <div class="panel__header">
+            <h2 class="panel__title">Details</h2>
+        </div>
+        <div class="panel__body" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-16);">
+            <div>
+                <p class="label-upper text-subtle">ISBN-13</p>
+                <p class="font-mono" th:text="${book.isbn13}">9780000000000</p>
+            </div>
+            <div th:if="${book.isbn10 != null}">
+                <p class="label-upper text-subtle">ISBN-10</p>
+                <p class="font-mono" th:text="${book.isbn10}">0000000000</p>
+            </div>
+            <div>
+                <p class="label-upper text-subtle">Author</p>
+                <p th:text="${#lists.isEmpty(book.authors)} ? 'Unknown' : ${book.authors[0].author.authorName}">Author</p>
+            </div>
+            <div>
+                <p class="label-upper text-subtle">Category</p>
+                <p th:text="${categoryNames}">Category</p>
+            </div>
+            <div th:if="${book.publisher != null}">
+                <p class="label-upper text-subtle">Publisher</p>
+                <p th:text="${book.publisher.publisherName}">Publisher</p>
+            </div>
+            <div th:if="${book.publicationYear != null}">
+                <p class="label-upper text-subtle">Published</p>
+                <p class="font-mono" th:text="${book.publicationYear}">2024</p>
+            </div>
+            <div th:if="${book.edition != null}">
+                <p class="label-upper text-subtle">Edition</p>
+                <p th:text="${book.edition}">1st</p>
+            </div>
+            <div>
+                <p class="label-upper text-subtle">Language</p>
+                <p th:text="${#strings.toUpperCase(book.languageCode)}">EN</p>
+            </div>
+        </div>
+        <div class="panel__body" th:if="${book.description != null}" style="padding-top:0;">
+            <p class="label-upper text-subtle">Description</p>
+            <p th:text="${book.description}">Description.</p>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel__header">
+            <h2 class="panel__title">Copies</h2>
+            <a th:if="${isStaff}" th:href="@{/catalogue/books/{id}/copies/new(id=${book.bookId})}" class="btn btn--secondary">
+                <svg class="icon icon--sm" aria-hidden="true"><use href="/icons.svg#icon-plus"></use></svg>
+                Add copy
+            </a>
+        </div>
+
+        <div th:if="${not #lists.isEmpty(copies)}" class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Accession</th>
+                        <th scope="col">Barcode</th>
+                        <th scope="col">Shelf location</th>
+                        <th scope="col">Condition</th>
+                        <th scope="col">Status</th>
+                        <th th:if="${isStaff}" scope="col">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="copy : ${copies}">
+                        <td class="font-mono" th:text="${copy.accessionNumber}">ACC-001</td>
+                        <td class="font-mono" th:text="${copy.barcode}">000000</td>
+                        <td th:text="${copy.shelfLocation} ?: '—'">A1-01</td>
+                        <td th:text="${copy.copyCondition}">Good</td>
+                        <td>
+                            <span th:replace="~{components/status-pill :: statusPill('bookCopy', ${copy.status})}"></span>
+                            <span th:if="${copy.referenceOnly}" class="text-subtle" style="margin-left: var(--space-8);">Reference only</span>
+                        </td>
+                        <td th:if="${isStaff}">
+                            <div class="cluster">
+                                <a th:href="@{/catalogue/copies/{id}/edit(id=${copy.copyId})}" class="icon-btn" aria-label="Edit copy">
+                                    <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-pencil"></use></svg>
+                                </a>
+                                <button type="button" class="icon-btn" aria-label="Withdraw copy"
+                                        th:if="${copy.status.name() != 'Withdrawn'}"
+                                        th:attr="data-modal-trigger=${'confirm-withdraw-' + copy.copyId}">
+                                    <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-archive"></use></svg>
+                                </button>
+                            </div>
+                            <div th:if="${copy.status.name() != 'Withdrawn'}"
+                                 th:replace="~{components/confirm-dialog :: confirmDialog(${'confirm-withdraw-' + copy.copyId},
+                                         'Withdraw this copy?',
+                                         ${'Accession ' + copy.accessionNumber + ' will be retired from circulation. This cannot be undone.'},
+                                         'Withdraw', 'Cancel', @{/catalogue/copies/{id}/withdraw(id=${copy.copyId})}, true)}"></div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div th:if="${#lists.isEmpty(copies)}">
+            <div th:replace="~{components/empty-state :: emptyState('book-open', 'No copies of this title yet.',
+                    ${isStaff} ? 'Add a copy' : null, ${isStaff} ? @{/catalogue/books/{id}/copies/new(id=${book.bookId})} : null)}"></div>
+        </div>
+    </section>
+
+    <section class="panel" th:with="reviewPanel=${@reviewService.panelFor(book.bookId, currentUserId)}">
+        <div class="panel__header">
+            <h2 class="panel__title">Ratings &amp; Reviews</h2>
+            <p th:if="${reviewPanel.ratingCount() > 0}" class="text-subtle font-mono"
+               th:text="${reviewPanel.averageRating()} + ' / 5 · ' + ${reviewPanel.ratingCount()} + ' rating(s)'">4.3 / 5 · 12 rating(s)</p>
+            <p th:if="${reviewPanel.ratingCount() == 0}" class="text-subtle">No ratings yet</p>
+        </div>
+
+        <div class="panel__body" th:if="${not authenticated}">
+            <div th:replace="~{components/empty-state :: emptyState('log-in', 'Log in to rate and review this title.', 'Log in', @{/login})}"></div>
+        </div>
+
+        <div class="panel__body" th:if="${authenticated and reviewPanel.ownForm() == null}">
+            <p class="text-subtle">Only a Library Member or Academic Staff Member account can rate and review books.</p>
+        </div>
+
+        <th:block th:if="${authenticated and reviewPanel.ownForm() != null}">
+            <div class="panel__body" style="display:flex; flex-direction:column; gap: var(--space-16);" th:if="${reviewPanel.ownReview() != null or reviewPanel.canReview()}">
+                <div th:if="${reviewPanel.ownReview() != null}" class="cluster" style="justify-content:space-between;">
+                    <span th:replace="~{components/status-pill :: statusPill('review', ${reviewPanel.ownReview().status()})}"></span>
+                    <span th:if="${reviewPanel.ownReview().status() == 'Pending'}" class="text-subtle">Pending moderation</span>
+                </div>
+
+                <form th:action="${reviewPanel.ownReview() == null} ? @{/reviews} : @{/reviews/{id}/edit(id=${reviewPanel.ownReview().reviewId()})}"
+                      method="post">
+                    <input type="hidden" name="bookId" th:value="${book.bookId}" />
+                    <div class="form-field">
+                        <label class="form-field__label" for="review-rating">Your rating *</label>
+                        <select id="review-rating" name="rating" class="form-field__select" required>
+                            <option value="">Select a rating</option>
+                            <option th:each="value : ${#numbers.sequence(5, 1)}" th:value="${value}"
+                                    th:text="${value} + (${value == 5} ? ' — Excellent' : (${value == 4} ? ' — Good' : (${value == 3} ? ' — Average' : (${value == 2} ? ' — Poor' : ' — Very poor'))))"
+                                    th:selected="${reviewPanel.ownForm().rating == value}">5 — Excellent</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label class="form-field__label" for="review-text">Review</label>
+                        <textarea id="review-text" name="reviewText" rows="4" class="form-field__textarea"
+                                  placeholder="Optional — share more about this book."
+                                  th:text="${reviewPanel.ownForm().reviewText}"></textarea>
+                        <p class="form-field__help">Reviews are checked by a Library Administrator before anyone else can see them.</p>
+                    </div>
+                    <button type="submit" class="btn btn--primary" th:text="${reviewPanel.ownReview() == null} ? 'Submit review' : 'Save changes'">Submit review</button>
+                </form>
+
+                <div th:if="${reviewPanel.ownReview() != null}">
+                    <button type="button" class="btn btn--secondary" data-modal-trigger="confirm-remove-own-review">Remove my review</button>
+                    <div th:replace="~{components/confirm-dialog :: confirmDialog('confirm-remove-own-review', 'Remove this review?',
+                            'It will no longer be shown, even if it was already published. This cannot be undone.',
+                            'Remove', 'Cancel', @{/reviews/{id}/remove(id=${reviewPanel.ownReview().reviewId()}, bookId=${book.bookId})}, true)}"></div>
+                </div>
+            </div>
+
+            <div class="panel__body" th:if="${reviewPanel.ownReview() == null and not reviewPanel.canReview()}">
+                <p class="text-subtle">Borrow this book to leave a rating and review.</p>
+            </div>
+        </th:block>
+
+        <div th:if="${not #lists.isEmpty(reviewPanel.reviews())}" class="panel__body" style="display:flex; flex-direction:column; gap: var(--space-16); padding-top:0;">
+            <div th:each="row : ${reviewPanel.reviews()}" style="border-top:1px solid var(--border); padding-top: var(--space-16);">
+                <div class="cluster" style="justify-content:space-between;">
+                    <div>
+                        <p th:text="${row.memberName()}">Name</p>
+                        <p class="text-subtle font-mono" th:text="${row.rating()} + ' / 5 · ' + ${#temporals.format(row.submittedAt(), 'yyyy-MM-dd')}">4 / 5 · 2026-01-01</p>
+                    </div>
+                    <button type="button" th:if="${row.canFlag()}" class="icon-btn" aria-label="Flag this review"
+                            th:attr="data-modal-trigger=${'flag-review-' + row.reviewId()}">
+                        <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-octagon-alert"></use></svg>
+                    </button>
+                </div>
+                <p th:if="${row.reviewText() != null}" th:text="${row.reviewText()}">Review text.</p>
+
+                <div th:if="${row.canFlag()}" class="modal-backdrop" th:attr="data-modal=${'flag-review-' + row.reviewId()}" hidden>
+                    <form class="modal" role="dialog" aria-modal="true"
+                          th:attr="aria-labelledby=${'flag-review-' + row.reviewId() + '-title'}"
+                          th:action="@{/reviews/{id}/flag(id=${row.reviewId()}, bookId=${book.bookId})}" method="post">
+                        <div class="modal__header">
+                            <h2 class="modal__title" th:id="${'flag-review-' + row.reviewId() + '-title'}">Flag this review?</h2>
+                            <button type="button" class="icon-btn" data-modal-close aria-label="Close">
+                                <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-x"></use></svg>
+                            </button>
+                        </div>
+                        <div class="modal__body">
+                            <p style="margin-bottom: var(--space-16);">It will be hidden until a Library Administrator makes a decision.</p>
+                            <div class="form-field">
+                                <label class="form-field__label" th:for="${'flag-reason-' + row.reviewId()}">Reason *</label>
+                                <textarea th:id="${'flag-reason-' + row.reviewId()}" name="reason" rows="3" required
+                                          class="form-field__textarea"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal__footer">
+                            <button type="button" class="btn btn--secondary" data-modal-close>Cancel</button>
+                            <button type="submit" class="btn btn--danger">Flag review</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!--
+        UC-04 place-a-reservation (com.lms.reservation). "Borrow" itself
+        still is not built (Circulation desk note stays); reserving is,
+        when nothing is available to borrow instead.
+
+        reservationPanel comes from a DIRECT call into com.lms.reservation's
+        own service bean — @reservationService.panelFor(...) — the exact
+        same shared-bean-from-template pattern components/status-pill.html
+        already uses for @statusPill. This is the one and only change UC-04
+        makes to a com.lms.catalogue file: BookController itself is
+        untouched, since the template calls straight into the bean instead
+        of the controller passing the same information down.
+    -->
+    <section class="panel" th:with="reservationPanel=${@reservationService.panelFor(book.bookId, currentUserId)}">
+        <div class="panel__header">
+            <h2 class="panel__title">Borrowing &amp; reservations</h2>
+        </div>
+        <div class="panel__body">
+            <!-- Both empty-state calls below split condition (wrapper) from
+                 th:replace (plain child) — gotcha #2: combining th:if/
+                 th:unless with th:insert/th:replace on ONE tag let the
+                 fragment render regardless of the condition, exactly like
+                 this same panel's earlier placeholder version never
+                 exercised (only one branch existed then). -->
+            <th:block th:unless="${authenticated}">
+                <div th:replace="~{components/empty-state :: emptyState('log-in', 'Log in to borrow or reserve this title.', 'Log in', @{/login})}"></div>
+            </th:block>
+
+            <th:block th:if="${authenticated and reservationPanel.hasAvailableCopy()}">
+                <div th:replace="~{components/empty-state :: emptyState('calendar-clock', 'A copy is available — ask at the front desk to borrow it.', null, null)}"></div>
+            </th:block>
+
+            <div th:if="${authenticated and not reservationPanel.hasAvailableCopy() and reservationPanel.hasActiveReservation()}"
+                 class="empty-state" style="align-items:flex-start; text-align:left; padding:0;">
+                <p class="empty-state__text" th:text="${reservationPanel.message()}">You are number 2 in the queue for this title.</p>
+            </div>
+
+            <div th:if="${authenticated and not reservationPanel.hasAvailableCopy() and not reservationPanel.hasActiveReservation()}">
+                <p style="margin-bottom: var(--space-16);">No copies are available right now. Reserve this title and the next copy returned will be held for you.</p>
+                <form th:action="@{/reservations}" method="post">
+                    <input type="hidden" name="bookId" th:value="${book.bookId}" />
+                    <button type="submit" class="btn btn--primary">
+                        <svg class="icon icon--sm" aria-hidden="true"><use href="/icons.svg#icon-calendar-clock"></use></svg>
+                        Reserve this title
+                    </button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel" th:if="${isStaff and book.active}">
+        <div class="panel__header">
+            <h2 class="panel__title">Danger zone</h2>
+        </div>
+        <div class="panel__body">
+            <button type="button" class="btn btn--danger" data-modal-trigger="confirm-deactivate-book">
+                <svg class="icon icon--sm" aria-hidden="true"><use href="/icons.svg#icon-archive"></use></svg>
+                Deactivate this book
+            </button>
+        </div>
+        <div th:replace="~{components/confirm-dialog :: confirmDialog('confirm-deactivate-book', 'Deactivate this book?',
+                'It will no longer appear in catalogue search or the public book list. This is blocked while any copy is on loan.',
+                'Deactivate', 'Cancel', @{/catalogue/books/{id}/deactivate(id=${book.bookId})}, true)}"></div>
+    </section>
+
+</div>
+</body>
+</html>

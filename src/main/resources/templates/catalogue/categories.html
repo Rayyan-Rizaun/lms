@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<!-- UC-02 reference data — staff-only maintenance list for Category. Same shape as authors.html. -->
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${pageTitle} + ' · Library Management System'">Categories · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/toast :: flash(${flashSuccessTitle}, ${flashSuccessMessage}, ${flashErrorTitle}, ${flashErrorMessage})}"></div>
+
+    <div th:replace="~{components/page-header :: pageHeader('Categories', 'Reference data for the Book form and the public search filter.', 'Add category', @{/catalogue/categories/new}, 'plus')}"></div>
+
+    <section class="panel">
+        <div th:if="${not #lists.isEmpty(categories)}" class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="category : ${categories}">
+                        <td th:text="${category.categoryName}">Name</td>
+                        <td th:text="${category.active} ? 'Active' : 'Inactive'">Active</td>
+                        <td>
+                            <div class="cluster">
+                                <a th:href="@{/catalogue/categories/{id}/edit(id=${category.categoryId})}" class="icon-btn" aria-label="Edit category">
+                                    <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-pencil"></use></svg>
+                                </a>
+                                <button type="button" class="icon-btn" aria-label="Deactivate category" th:if="${category.active}"
+                                        th:attr="data-modal-trigger=${'confirm-deactivate-category-' + category.categoryId}">
+                                    <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-archive"></use></svg>
+                                </button>
+                            </div>
+                            <div th:if="${category.active}"
+                                 th:replace="~{components/confirm-dialog :: confirmDialog(${'confirm-deactivate-category-' + category.categoryId},
+                                         'Deactivate this category?', ${category.categoryName + ' will no longer be offered on the Book form or search filter.'},
+                                         'Deactivate', 'Cancel', @{/catalogue/categories/{id}/deactivate(id=${category.categoryId})}, true)}"></div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div th:if="${#lists.isEmpty(categories)}">
+            <div th:replace="~{components/empty-state :: emptyState('tag', 'No categories yet.', 'Add category', @{/catalogue/categories/new})}"></div>
+        </div>
+    </section>
+
+</div>
+</body>
+</html>
