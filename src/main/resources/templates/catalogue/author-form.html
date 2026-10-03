@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<!-- UC-02 reference data — create/edit one Author. Staff-only. -->
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${pageTitle} + ' · Library Management System'">Author · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/page-header :: pageHeader(${pageTitle}, null, null, null, null)}"></div>
+
+    <section class="panel">
+        <div class="panel__body">
+            <form th:action="${formAction}" th:object="${authorForm}" method="post"
+                  style="display:flex; flex-direction:column; gap: var(--space-16);">
+
+                <div th:replace="~{components/form-field :: formField('authorName', 'Author name', 'text', null, true, null, null, null)}"></div>
+                <div th:replace="~{components/form-field :: formField('biography', 'Biography', 'textarea', null, false, null, 5, null)}"></div>
+
+                <div class="cluster">
+                    <button type="submit" class="btn btn--primary">Save</button>
+                    <a th:href="@{/catalogue/authors}" class="btn btn--secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </section>
+
+</div>
+</body>
+</html>
