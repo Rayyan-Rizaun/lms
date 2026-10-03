@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<!-- UC-04 — "My Reservations": title, requested date, queue position, status pill, cancel action. -->
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${pageTitle} + ' · Library Management System'">My Reservations · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/toast :: flash(${flashSuccessTitle}, ${flashSuccessMessage}, ${flashErrorTitle}, ${flashErrorMessage})}"></div>
+
+    <div th:replace="~{components/page-header :: pageHeader('My Reservations', 'Everything you are waiting on.', 'Browse Books', @{/catalogue/books}, 'book-open')}"></div>
+
+    <section class="panel">
+        <div th:if="${not #lists.isEmpty(rows)}" class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Title</th>
+                        <th scope="col" class="data-table__col-right">Requested</th>
+                        <th scope="col" class="data-table__col-right">Queue position</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="data-table__col-right">Collect by</th>
+                        <th scope="col"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="row : ${rows}">
+                        <td><span class="book-title" th:text="${row.bookTitle()}">Title</span></td>
+                        <td class="data-table__col-right font-mono" th:text="${#temporals.format(row.requestedAt(), 'yyyy-MM-dd')}">2026-01-01</td>
+                        <td class="data-table__col-right font-mono" th:text="${row.queuePosition()} ?: '—'">2</td>
+                        <td><span th:replace="~{components/status-pill :: statusPill('reservation', ${row.status()})}"></span></td>
+                        <td class="data-table__col-right font-mono"
+                            th:text="${row.expiresAt() != null} ? ${#temporals.format(row.expiresAt(), 'yyyy-MM-dd')} : '—'">—</td>
+                        <td>
+                            <button type="button" class="icon-btn" aria-label="Cancel reservation" th:if="${row.cancellable()}"
+                                    th:attr="data-modal-trigger=${'confirm-cancel-' + row.reservationId()}">
+                                <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-x"></use></svg>
+                            </button>
+                            <div th:if="${row.cancellable()}"
+                                 th:replace="~{components/confirm-dialog :: confirmDialog(${'confirm-cancel-' + row.reservationId()},
+                                         'Cancel this reservation?', ${'You will lose your place in the queue for ' + row.bookTitle() + '.'},
+                                         'Cancel reservation', 'Keep it', @{/reservations/{id}/cancel(id=${row.reservationId()})}, true)}"></div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div th:if="${#lists.isEmpty(rows)}">
+            <div th:replace="~{components/empty-state :: emptyState('calendar-clock', 'You have no reservations.', 'Browse Books', @{/catalogue/books})}"></div>
+        </div>
+    </section>
+
+</div>
+</body>
+</html>
