@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<!--
+    UC-03 — Issue Book. Staff-only (Librarian / Library Administrator).
+
+    A plain-GET, full-page-reload wizard rather than a JS-driven one (this
+    project has no SPA layer): searching for a member or a copy re-submits
+    this same page with the new query added to whatever was already
+    selected — each search form carries the OTHER side's current selection
+    as hidden fields, so picking a copy never loses an already-picked
+    member and vice versa. Selecting a result is a plain link that adds
+    that id to the query string.
+
+    Both results tables are hand-written rather than components/data-table
+    — small, one-shot search results with a "Select" action per row and no
+    sorting, so the generic fragment's row-fragment machinery would be pure
+    overhead here (same reasoning catalogue/book-detail.html's copies table
+    already uses).
+-->
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${pageTitle} + ' · Library Management System'">Issue Book · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/toast :: flash(${flashSuccessTitle}, ${flashSuccessMessage}, ${flashErrorTitle}, ${flashErrorMessage})}"></div>
+
+    <div th:replace="~{components/page-header :: pageHeader('Issue Book', 'Search for a member and an available copy, then confirm.', null, null, null)}"></div>
+
+    <div class="layout-grid">
+
+        <!-- ============================= MEMBER ============================= -->
+        <section class="panel">
+            <div class="panel__header">
+                <h2 class="panel__title">1. Member</h2>
+            </div>
+            <div class="panel__body" style="display:flex; flex-direction:column; gap: var(--space-16);">
+
+                <form method="get" th:action="@{/borrowing/issue}" class="cluster" style="align-items:flex-end;">
+                    <div class="form-field" style="flex:1 1 200px; margin:0;">
+                        <label class="form-field__label" for="memberQuery">Search members</label>
+                        <input type="search" id="memberQuery" name="memberQuery" th:value="${memberQuery}"
+                               class="form-field__input" placeholder="Name or membership number" />
+                    </div>
+                    <input type="hidden" name="copyId" th:if="${selectedCopy != null}" th:value="${selectedCopy.copyId()}" />
+                    <input type="hidden" name="copyQuery" th:if="${copyQuery != null}" th:value="${copyQuery}" />
+                    <button type="submit" class="btn btn--secondary">
+                        <svg class="icon icon--sm" aria-hidden="true"><use href="/icons.svg#icon-search"></use></svg>
+                        Search
+                    </button>
+                </form>
+
+                <div th:if="${not #lists.isEmpty(memberResults)}" class="data-table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Name</th>
+                                <th scope="col">Membership no.</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Active loans</th>
+                                <th scope="col"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="row : ${memberResults}">
+                                <td th:text="${row.fullName()}">Name</td>
+                                <td class="font-mono" th:text="${row.membershipNo()}">MEM-2026-000000</td>
+                                <td><span th:replace="~{components/status-pill :: statusPill('membership', ${row.membershipStatus()})}"></span></td>
+                                <td class="data-table__col-right font-mono" th:text="${row.activeLoanCount()} + ' / ' + ${row.loanLimit()}">2 / 5</td>
+                                <td>
+                                    <a class="btn btn--secondary"
+                                       th:href="@{/borrowing/issue(memberQuery=${memberQuery}, memberId=${row.memberId()}, copyQuery=${copyQuery}, copyId=${selectedCopy != null ? selectedCopy.copyId() : null})}">
+                                        Select
+                                    </a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div th:if="${memberQuery != null and not memberQuery.isBlank() and #lists.isEmpty(memberResults)}">
+                    <div th:replace="~{components/empty-state :: emptyState('circle-user', 'No members match that search.', null, null)}"></div>
+                </div>
+
+                <!-- Selected member: UC-03 "the system displays the Library Member's borrowing eligibility." -->
+                <div th:if="${selectedMember != null}" class="panel" style="border-style:dashed;">
+                    <div class="panel__body" style="display:flex; flex-direction:column; gap: var(--space-8);">
+                        <div class="cluster" style="justify-content:space-between;">
+                            <strong th:text="${selectedMember.fullName()}">Name</strong>
+                            <span th:replace="~{components/status-pill :: statusPill('membership', ${selectedMember.membershipStatus()})}"></span>
+                        </div>
+                        <p class="text-subtle">
+                            <span th:text="${selectedMember.membershipNo()}">MEM-2026-000000</span> ·
+                            <span th:text="${selectedMember.memberType()}">Student</span> ·
+                            <span th:text="${selectedMember.activeLoanCount()} + ' of ' + ${selectedMember.loanLimit()} + ' active loans'">2 of 5 active loans</span>
+                        </p>
+                        <p th:if="${not selectedMember.eligible()}" class="form-field__error" th:text="${selectedMember.ineligibleReason()}">Reason.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================= COPY ============================= -->
+        <section class="panel">
+            <div class="panel__header">
+                <h2 class="panel__title">2. Copy</h2>
+            </div>
+            <div class="panel__body" style="display:flex; flex-direction:column; gap: var(--space-16);">
+
+                <form method="get" th:action="@{/borrowing/issue}" class="cluster" style="align-items:flex-end;">
+                    <div class="form-field" style="flex:1 1 200px; margin:0;">
+                        <label class="form-field__label" for="copyQuery">Search copies</label>
+                        <input type="search" id="copyQuery" name="copyQuery" th:value="${copyQuery}"
+                               class="form-field__input" placeholder="Barcode or book title" />
+                    </div>
+                    <input type="hidden" name="memberId" th:if="${selectedMember != null}" th:value="${selectedMember.memberId()}" />
+                    <input type="hidden" name="memberQuery" th:if="${memberQuery != null}" th:value="${memberQuery}" />
+                    <button type="submit" class="btn btn--secondary">
+                        <svg class="icon icon--sm" aria-hidden="true"><use href="/icons.svg#icon-search"></use></svg>
+                        Search
+                    </button>
+                </form>
+
+                <div th:if="${not #lists.isEmpty(copyResults)}" class="data-table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Book</th>
+                                <th scope="col">Accession</th>
+                                <th scope="col">Barcode</th>
+                                <th scope="col">Status</th>
+                                <th scope="col"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="row : ${copyResults}">
+                                <td><span class="book-title" th:text="${row.bookTitle()}">Title</span></td>
+                                <td class="font-mono" th:text="${row.accessionNumber()}">ACC-1001</td>
+                                <td class="font-mono" th:text="${row.barcode()}">BC-20001</td>
+                                <td><span th:replace="~{components/status-pill :: statusPill('bookCopy', ${row.status()})}"></span></td>
+                                <td>
+                                    <a th:if="${row.eligible()}" class="btn btn--secondary"
+                                       th:href="@{/borrowing/issue(memberQuery=${memberQuery}, memberId=${selectedMember != null ? selectedMember.memberId() : null}, copyQuery=${copyQuery}, copyId=${row.copyId()})}">
+                                        Select
+                                    </a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div th:if="${copyQuery != null and not copyQuery.isBlank() and #lists.isEmpty(copyResults)}">
+                    <div th:replace="~{components/empty-state :: emptyState('book-open', 'No copies match that search.', null, null)}"></div>
+                </div>
+
+                <div th:if="${selectedCopy != null}" class="panel" style="border-style:dashed;">
+                    <div class="panel__body" style="display:flex; flex-direction:column; gap: var(--space-8);">
+                        <div class="cluster" style="justify-content:space-between;">
+                            <span class="book-title" th:text="${selectedCopy.bookTitle()}">Title</span>
+                            <span th:replace="~{components/status-pill :: statusPill('bookCopy', ${selectedCopy.status()})}"></span>
+                        </div>
+                        <p class="text-subtle">
+                            <span class="font-mono" th:text="${selectedCopy.accessionNumber()}">ACC-1001</span> ·
+                            <span th:text="${selectedCopy.shelfLocation()} ?: 'No shelf location'">A1-01</span>
+                        </p>
+                        <p th:if="${not selectedCopy.eligible() and selectedCopy.referenceOnly()}" class="form-field__error">Reference-only copies do not circulate.</p>
+                        <p th:if="${not selectedCopy.eligible() and not selectedCopy.referenceOnly()}" class="form-field__error">This copy is not available.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ============================= CONFIRM ============================= -->
+    <section class="panel" th:if="${selectedMember != null and selectedCopy != null}">
+        <div class="panel__header">
+            <h2 class="panel__title">3. Confirm</h2>
+        </div>
+        <div class="panel__body">
+            <form th:action="@{/borrowing/issue}" method="post">
+                <input type="hidden" name="memberId" th:value="${selectedMember.memberId()}" />
+                <input type="hidden" name="copyId" th:value="${selectedCopy.copyId()}" />
+                <p style="margin-bottom: var(--space-16);">
+                    Issue <span class="book-title" th:text="${selectedCopy.bookTitle()}">Title</span>
+                    to <strong th:text="${selectedMember.fullName()}">Name</strong>?
+                </p>
+                <button type="submit" class="btn btn--primary">
+                    <svg class="icon icon--sm" aria-hidden="true"><use href="/icons.svg#icon-circle-check"></use></svg>
+                    Confirm issue
+                </button>
+            </form>
+        </div>
+    </section>
+
+</div>
+</body>
+</html>
