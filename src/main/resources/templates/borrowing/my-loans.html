@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${pageTitle} + ' · Library Management System'">My Loans · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/toast :: flash(${flashSuccessTitle}, ${flashSuccessMessage}, ${flashErrorTitle}, ${flashErrorMessage})}"></div>
+
+    <div th:replace="~{components/page-header :: pageHeader('My Loans', 'Everything you currently have, and everything you have returned.', null, null, null)}"></div>
+
+    <section class="panel">
+        <div class="panel__header">
+            <h2 class="panel__title">Current</h2>
+        </div>
+        <div th:if="${not #lists.isEmpty(loans.current())}" class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Book</th>
+                        <th scope="col" class="data-table__col-right">Borrowed</th>
+                        <th scope="col" class="data-table__col-right">Due</th>
+                        <th scope="col">Status</th>
+                        <th scope="col"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="loan : ${loans.current()}">
+                        <td><span class="book-title" th:text="${loan.bookTitle()}">Title</span></td>
+                        <td class="data-table__col-right font-mono" th:text="${#temporals.format(loan.borrowedAt(), 'yyyy-MM-dd')}">2026-01-01</td>
+                        <td class="data-table__col-right font-mono" th:text="${#temporals.format(loan.dueAt(), 'yyyy-MM-dd')}">2026-01-15</td>
+                        <td><span th:replace="~{components/status-pill :: statusPill('loan', ${loan.pillStatus()})}"></span></td>
+                        <td>
+                            <button type="button" class="btn btn--secondary" th:if="${loan.renewable()}"
+                                    th:attr="data-modal-trigger=${'renew-' + loan.loanId()}">
+                                Renew
+                            </button>
+                            <th:block th:if="${loan.renewable()}">
+                                <div th:replace="~{components/confirm-dialog :: confirmDialog(${'renew-' + loan.loanId()},
+                                        'Renew this loan?',
+                                        ${'Extends the due date for ' + loan.bookTitle() + '.'},
+                                        'Renew loan', 'Cancel', @{/borrowing/my-loans/{id}/renew(id=${loan.loanId()})}, false)}"></div>
+                            </th:block>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div th:if="${#lists.isEmpty(loans.current())}">
+            <div th:replace="~{components/empty-state :: emptyState('book-open', 'You have no books on loan right now.', 'Browse Books', @{/catalogue/books})}"></div>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel__header">
+            <h2 class="panel__title">Past</h2>
+        </div>
+        <div th:if="${not #lists.isEmpty(loans.past())}" class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Book</th>
+                        <th scope="col" class="data-table__col-right">Borrowed</th>
+                        <th scope="col" class="data-table__col-right">Returned</th>
+                        <th scope="col">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="loan : ${loans.past()}">
+                        <td><span class="book-title" th:text="${loan.bookTitle()}">Title</span></td>
+                        <td class="data-table__col-right font-mono" th:text="${#temporals.format(loan.borrowedAt(), 'yyyy-MM-dd')}">2026-01-01</td>
+                        <td class="data-table__col-right font-mono" th:text="${loan.returnedAt() != null} ? ${#temporals.format(loan.returnedAt(), 'yyyy-MM-dd')} : '—'">2026-01-15</td>
+                        <td><span th:replace="~{components/status-pill :: statusPill('loan', ${loan.pillStatus()})}"></span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div th:if="${#lists.isEmpty(loans.past())}">
+            <div th:replace="~{components/empty-state :: emptyState('arrow-left-right', 'No past loans yet.', null, null)}"></div>
+        </div>
+    </section>
+
+</div>
+</body>
+</html>
