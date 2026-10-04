@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<!--
+    UC-03 — Current Loans: every Active loan, member, book, borrowed/due
+    dates, a derived overdue status pill (R15 — never stored, computed
+    once in BorrowingService#currentLoans), and now a Return action per
+    row. Staff-only.
+
+    Return opens a hand-built modal — the return-condition select plus the
+    confirm step in one — reusing components/modal.html's own CSS classes
+    and [data-modal]/[data-modal-trigger]/[data-modal-close] contract
+    directly rather than calling the fragment: modal.html renders its body
+    and footer as two SIBLING <div>s, so a single <form> spanning the
+    select field and the submit button can't wrap through that fragment
+    call (the same problem, and the same fix, as
+    com.lms.reservation's staff-cancel modal in reservation/queue.html —
+    see that file's own header comment for the full reasoning). Also not
+    components/confirm-dialog — that fragment has no room for a field at
+    all.
+-->
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${pageTitle} + ' · Library Management System'">Current Loans · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/toast :: flash(${flashSuccessTitle}, ${flashSuccessMessage}, ${flashErrorTitle}, ${flashErrorMessage})}"></div>
+
+    <div th:replace="~{components/page-header :: pageHeader('Current Loans', 'Every book currently on loan.', 'Issue Book', @{/borrowing/issue}, 'plus')}"></div>
+
+    <section class="panel">
+        <div th:if="${not #lists.isEmpty(loans)}" class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Member</th>
+                        <th scope="col">Book</th>
+                        <th scope="col" class="data-table__col-right">Borrowed</th>
+                        <th scope="col" class="data-table__col-right">Due</th>
+                        <th scope="col">Status</th>
+                        <th scope="col"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="loan : ${loans}">
+                        <td th:text="${loan.memberName()}">Name</td>
+                        <td><span class="book-title" th:text="${loan.bookTitle()}">Title</span></td>
+                        <td class="data-table__col-right font-mono" th:text="${#temporals.format(loan.borrowedAt(), 'yyyy-MM-dd')}">2026-01-01</td>
+                        <td class="data-table__col-right font-mono" th:text="${#temporals.format(loan.dueAt(), 'yyyy-MM-dd')}">2026-01-15</td>
+                        <td><span th:replace="~{components/status-pill :: statusPill('loan', ${loan.pillStatus()})}"></span></td>
+                        <td>
+                            <div class="cluster">
+                                <button type="button" class="btn btn--secondary" th:attr="data-modal-trigger=${'return-' + loan.loanId()}">
+                                    Return
+                                </button>
+                                <button type="button" class="btn btn--secondary" th:if="${loan.renewable()}"
+                                        th:attr="data-modal-trigger=${'renew-' + loan.loanId()}">
+                                    Renew
+                                </button>
+                            </div>
+
+                            <th:block th:if="${loan.renewable()}">
+                                <div th:replace="~{components/confirm-dialog :: confirmDialog(${'renew-' + loan.loanId()},
+                                        'Renew this loan?',
+                                        ${'Extends the due date for ' + loan.bookTitle() + ', borrowed by ' + loan.memberName() + '.'},
+                                        'Renew loan', 'Cancel', @{/borrowing/loans/{id}/renew(id=${loan.loanId()})}, false)}"></div>
+                            </th:block>
+
+                            <div class="modal-backdrop" th:attr="data-modal=${'return-' + loan.loanId()}" hidden>
+                                <form class="modal" role="dialog" aria-modal="true"
+                                      th:attr="aria-labelledby=${'return-' + loan.loanId() + '-title'}"
+                                      th:action="@{/borrowing/loans/{id}/return(id=${loan.loanId()})}" method="post">
+                                    <div class="modal__header">
+                                        <h2 class="modal__title" th:id="${'return-' + loan.loanId() + '-title'}">Return this book?</h2>
+                                        <button type="button" class="icon-btn" data-modal-close aria-label="Close">
+                                            <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-x"></use></svg>
+                                        </button>
+                                    </div>
+                                    <div class="modal__body">
+                                        <p style="margin-bottom: var(--space-16);"
+                                           th:text="${'This marks ' + loan.bookTitle() + ' as returned by ' + loan.memberName() + ' and frees the copy.'}">
+                                            This marks the book as returned and frees the copy.
+                                        </p>
+                                        <div class="form-field">
+                                            <label class="form-field__label" th:for="${'return-condition-' + loan.loanId()}">Condition *</label>
+                                            <select th:id="${'return-condition-' + loan.loanId()}" name="returnCondition" required
+                                                    class="form-field__select">
+                                                <option value="">Select condition</option>
+                                                <option th:each="opt : ${returnConditionOptions}" th:value="${opt.value()}" th:text="${opt.label()}">Good</option>
+                                            </select>
+                                            <p class="form-field__help">What condition the book came back in.</p>
+                                        </div>
+                                    </div>
+                                    <div class="modal__footer">
+                                        <button type="button" class="btn btn--secondary" data-modal-close>Cancel</button>
+                                        <button type="submit" class="btn btn--primary">Confirm return</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div th:if="${#lists.isEmpty(loans)}">
+            <div th:replace="~{components/empty-state :: emptyState('arrow-left-right', 'No books are currently on loan.', 'Issue Book', @{/borrowing/issue})}"></div>
+        </div>
+    </section>
+
+</div>
+</body>
+</html>
