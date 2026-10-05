@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<!--
+    UC-05 — Outstanding Fines: every unpaid/partially-paid/under-appeal
+    fine, member, type, assessed, paid, balance, status, search, filter,
+    sort, pagination, and three summary stat tiles. Staff-only.
+
+    SORTING AND PAGINATION ARE HAND-BUILT, NOT components/data-table's or
+    components/pagination's own header/page links — same reason
+    catalogue/books.html's own are: a click on a column header or a page
+    number must not silently drop q / status / type.
+
+    The Waive modal is hand-built, not components/confirm-dialog (no room
+    for a reason field there) or components/modal.html (its body/footer
+    are two sibling <div>s, so a form spanning both can't wrap through
+    that fragment call) — the same fix already used for
+    com.lms.reservation's staff-cancel modal and com.lms.borrowing's
+    return modal. Unlike those two, only one Waive modal is needed per
+    page load here rather than one per row, since only one row's modal is
+    ever open at a time — but each still gets its own instance (unique id)
+    so the right fine id posts.
+-->
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${pageTitle} + ' · Library Management System'">Outstanding Fines · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/toast :: flash(${flashSuccessTitle}, ${flashSuccessMessage}, ${flashErrorTitle}, ${flashErrorMessage})}"></div>
+
+    <div th:replace="~{components/page-header :: pageHeader('Outstanding Fines', 'Pending, under appeal, and partially paid.', 'Review Appeals', @{/fines/appeals}, 'octagon-alert')}"></div>
+
+    <div th:replace="~{components/stat-tile :: statTileRow(${tiles})}"></div>
+
+    <section class="panel">
+        <div class="panel__body">
+            <form method="get" th:action="@{/fines}" class="cluster" style="align-items:flex-end;">
+                <div class="form-field" style="flex:2 1 220px; margin:0;">
+                    <label class="form-field__label" for="q">Search</label>
+                    <input type="search" id="q" name="q" th:value="${q}" class="form-field__input"
+                           placeholder="Member or membership number" />
+                </div>
+                <div class="form-field" style="flex:1 1 160px; margin:0;">
+                    <label class="form-field__label" for="status">Status</label>
+                    <select id="status" name="status" class="form-field__select">
+                        <option th:each="opt : ${statusOptions}" th:value="${opt.value()}" th:text="${opt.label()}"
+                                th:selected="${opt.value() == (status != null ? status : '')}">Status</option>
+                    </select>
+                </div>
+                <div class="form-field" style="flex:1 1 140px; margin:0;">
+                    <label class="form-field__label" for="type">Type</label>
+                    <select id="type" name="type" class="form-field__select">
+                        <option th:each="opt : ${typeOptions}" th:value="${opt.value()}" th:text="${opt.label()}"
+                                th:selected="${opt.value() == (type != null ? type : '')}">Type</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn--primary">
+                    <svg class="icon icon--sm" aria-hidden="true"><use href="/icons.svg#icon-search"></use></svg>
+                    Search
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div th:if="${not #lists.isEmpty(rows)}" class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th th:each="col : ${columns}" scope="col"
+                            th:classappend="${col.align() == 'right'} ? 'data-table__col-right' : ''"
+                            th:with="sortable=${col.sortable()},
+                                     active=${sortable and #strings.equals(col.sortKey(), currentSort)},
+                                     nextDir=${#strings.equals(currentDir, 'asc')} ? 'desc' : 'asc',
+                                     ariaSortValue=${not sortable} ? null : (${not active} ? 'none' : (${#strings.equals(currentDir, 'desc')} ? 'descending' : 'ascending'))"
+                            th:aria-sort="${ariaSortValue}">
+                            <a th:if="${sortable}" class="data-table__sort"
+                               th:href="@{/fines(q=${q}, status=${status}, type=${type},
+                                                  sort=${col.sortKey()}, dir=${active} ? ${nextDir} : 'asc')}">
+                                <span th:text="${col.label()}">Label</span>
+                                <svg class="icon" aria-hidden="true">
+                                    <use th:if="${active and #strings.equals(currentDir, 'asc')}" href="/icons.svg#icon-chevron-up"></use>
+                                    <use th:if="${active and #strings.equals(currentDir, 'desc')}" href="/icons.svg#icon-chevron-down"></use>
+                                    <use th:unless="${active}" href="/icons.svg#icon-chevrons-up-down"></use>
+                                </svg>
+                            </a>
+                            <span th:unless="${sortable}" th:text="${col.label()}">Label</span>
+                        </th>
+                        <th scope="col"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="row : ${rows}">
+                        <td th:text="${row.memberName()}">Name</td>
+                        <td class="font-mono" th:text="${row.membershipNo()}">MEM-2026-000000</td>
+                        <td th:text="${row.fineType()}">Overdue</td>
+                        <td class="data-table__col-right font-mono" th:text="${row.amountAssessed()}">100.00</td>
+                        <td class="data-table__col-right font-mono" th:text="${row.amountPaid()}">0.00</td>
+                        <td class="data-table__col-right font-mono" th:text="${row.balance()}">100.00</td>
+                        <td><span th:replace="~{components/status-pill :: statusPill('fine', ${row.status()})}"></span></td>
+                        <td>
+                            <div class="cluster" th:if="${row.actionable()}">
+                                <a th:href="@{/fines/{id}/pay(id=${row.fineId()})}" class="btn btn--secondary">
+                                    <svg class="icon icon--sm" aria-hidden="true"><use href="/icons.svg#icon-wallet"></use></svg>
+                                    Pay
+                                </a>
+                                <button type="button" class="btn btn--danger" th:attr="data-modal-trigger=${'waive-' + row.fineId()}">
+                                    Waive
+                                </button>
+                            </div>
+
+                            <div class="modal-backdrop" th:if="${row.actionable()}" th:attr="data-modal=${'waive-' + row.fineId()}" hidden>
+                                <form class="modal" role="dialog" aria-modal="true"
+                                      th:attr="aria-labelledby=${'waive-' + row.fineId() + '-title'}"
+                                      th:action="@{/fines/{id}/waive(id=${row.fineId()})}" method="post">
+                                    <div class="modal__header">
+                                        <h2 class="modal__title" th:id="${'waive-' + row.fineId() + '-title'}">Waive this fine?</h2>
+                                        <button type="button" class="icon-btn" data-modal-close aria-label="Close">
+                                            <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-x"></use></svg>
+                                        </button>
+                                    </div>
+                                    <div class="modal__body">
+                                        <p style="margin-bottom: var(--space-16);"
+                                           th:text="${row.memberName() + ' will no longer owe LKR ' + row.balance() + ' for this fine.'}">
+                                            This member will no longer owe the outstanding balance.
+                                        </p>
+                                        <div class="form-field">
+                                            <label class="form-field__label" th:for="${'waive-reason-' + row.fineId()}">Reason *</label>
+                                            <textarea th:id="${'waive-reason-' + row.fineId()}" name="reason" rows="3" required
+                                                      class="form-field__textarea"></textarea>
+                                            <p class="form-field__help">Recorded against this fine for the record.</p>
+                                        </div>
+                                    </div>
+                                    <div class="modal__footer">
+                                        <button type="button" class="btn btn--secondary" data-modal-close>Keep it</button>
+                                        <button type="submit" class="btn btn--danger">Waive fine</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div th:if="${#lists.isEmpty(rows)}">
+            <div th:replace="~{components/empty-state :: emptyState('wallet', 'No outstanding fines match your filters.', null, null)}"></div>
+        </div>
+
+        <!-- Hand-built for the same reason the header links above are: it
+             must carry q / status / type, which components/pagination's
+             own ?page=N-only links would drop. firstItem/lastItem come
+             from the controller (a plain long), not an inline
+             Math.min(int, long) here. -->
+        <nav th:if="${not #lists.isEmpty(rows)}" class="pagination" aria-label="Pagination"
+             th:with="windowStart=${T(java.lang.Math).max(1, page - 2)},
+                      windowEnd=${T(java.lang.Math).min(totalPages, page + 2)}">
+            <p class="pagination__range">
+                Showing <span class="font-mono" th:text="${firstItem} + '–' + ${lastItem}">1–20</span>
+                of <span class="font-mono" th:text="${totalItems}">214</span>
+            </p>
+            <div class="pagination__controls">
+                <a th:if="${page > 1}" class="icon-btn" aria-label="Previous page"
+                   th:href="@{/fines(q=${q}, status=${status}, type=${type}, sort=${currentSort}, dir=${currentDir}, page=${page - 1})}">
+                    <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-chevron-left"></use></svg>
+                </a>
+                <button th:unless="${page > 1}" type="button" class="icon-btn" disabled aria-label="Previous page">
+                    <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-chevron-left"></use></svg>
+                </button>
+
+                <a th:each="p : ${#numbers.sequence(windowStart, windowEnd)}" th:text="${p}"
+                   th:href="@{/fines(q=${q}, status=${status}, type=${type}, sort=${currentSort}, dir=${currentDir}, page=${p})}"
+                   class="pagination__page" th:classappend="${p == page} ? 'is-current' : ''"
+                   th:attr="aria-current=${p == page} ? 'page' : null">1</a>
+
+                <a th:if="${page < totalPages}" class="icon-btn" aria-label="Next page"
+                   th:href="@{/fines(q=${q}, status=${status}, type=${type}, sort=${currentSort}, dir=${currentDir}, page=${page + 1})}">
+                    <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-chevron-right"></use></svg>
+                </a>
+                <button th:unless="${page < totalPages}" type="button" class="icon-btn" disabled aria-label="Next page">
+                    <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-chevron-right"></use></svg>
+                </button>
+            </div>
+        </nav>
+    </section>
+
+</div>
+</body>
+</html>
