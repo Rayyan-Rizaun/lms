@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<!--
+    UC-06 — Fine Appeals: every Pending appeal, the fine it is against, the
+    member's own reason, and Approve/Reject actions. Staff-only.
+
+    Both modals are hand-built for the same reason
+    fine/outstanding.html's Waive modal is: components/confirm-dialog has
+    no room for a field, and components/modal.html splits body/footer
+    into two sibling <div>s so a real <form> can't span both.
+-->
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${pageTitle} + ' · Library Management System'">Fine Appeals · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/toast :: flash(${flashSuccessTitle}, ${flashSuccessMessage}, ${flashErrorTitle}, ${flashErrorMessage})}"></div>
+
+    <div th:replace="~{components/page-header :: pageHeader('Fine Appeals', 'Pending appeals awaiting a decision.', 'Outstanding Fines', @{/fines}, 'wallet')}"></div>
+
+    <section class="panel">
+        <div th:if="${not #lists.isEmpty(rows)}" class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Member</th>
+                        <th scope="col">Fine type</th>
+                        <th scope="col" class="data-table__col-right">Assessed</th>
+                        <th scope="col" class="data-table__col-right">Balance</th>
+                        <th scope="col">Reason</th>
+                        <th scope="col" class="data-table__col-right">Submitted</th>
+                        <th scope="col"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="row : ${rows}">
+                        <td th:text="${row.memberName()}">Name</td>
+                        <td th:text="${row.fineType()}">Overdue</td>
+                        <td class="data-table__col-right font-mono" th:text="${row.amountAssessed()}">100.00</td>
+                        <td class="data-table__col-right font-mono" th:text="${row.balance()}">100.00</td>
+                        <td>
+                            <p th:text="${row.appealReason()}">Reason text.</p>
+                            <p th:if="${row.referralNote() != null}" class="text-subtle">Referred for correction — <span th:text="${row.referralNote()}">Note.</span></p>
+                        </td>
+                        <td class="data-table__col-right font-mono" th:text="${#temporals.format(row.submittedAt(), 'yyyy-MM-dd')}">2026-01-01</td>
+                        <td>
+                            <div class="cluster">
+                                <button type="button" class="btn btn--secondary" th:attr="data-modal-trigger=${'approve-' + row.appealId()}">
+                                    Approve
+                                </button>
+                                <button type="button" class="btn btn--danger" th:attr="data-modal-trigger=${'reject-' + row.appealId()}">
+                                    Reject
+                                </button>
+                                <button type="button" class="btn btn--secondary" th:if="${currentRoleNames.contains('Finance Officer')}"
+                                        th:attr="data-modal-trigger=${'refer-' + row.appealId()}">
+                                    Refer
+                                </button>
+                            </div>
+
+                            <div class="modal-backdrop" th:attr="data-modal=${'approve-' + row.appealId()}" hidden>
+                                <form class="modal" role="dialog" aria-modal="true"
+                                      th:attr="aria-labelledby=${'approve-' + row.appealId() + '-title'}"
+                                      th:action="@{/fines/appeals/{id}/approve(id=${row.appealId()})}" method="post">
+                                    <div class="modal__header">
+                                        <h2 class="modal__title" th:id="${'approve-' + row.appealId() + '-title'}">Approve this appeal?</h2>
+                                        <button type="button" class="icon-btn" data-modal-close aria-label="Close">
+                                            <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-x"></use></svg>
+                                        </button>
+                                    </div>
+                                    <div class="modal__body">
+                                        <p style="margin-bottom: var(--space-16);"
+                                           th:text="${'Reduces the fine charged to ' + row.memberName() + '. Cannot exceed the current balance of LKR ' + row.balance() + '.'}">
+                                            Reduces this fine. Cannot exceed the current balance.
+                                        </p>
+                                        <div class="form-field">
+                                            <label class="form-field__label" th:for="${'reduction-' + row.appealId()}">Reduction amount (LKR) *</label>
+                                            <input type="number" step="0.01" min="0.01" th:id="${'reduction-' + row.appealId()}" name="reduction" required
+                                                   class="form-field__input" />
+                                        </div>
+                                    </div>
+                                    <div class="modal__footer">
+                                        <button type="button" class="btn btn--secondary" data-modal-close>Cancel</button>
+                                        <button type="submit" class="btn btn--primary">Approve appeal</button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div class="modal-backdrop" th:attr="data-modal=${'reject-' + row.appealId()}" hidden>
+                                <form class="modal" role="dialog" aria-modal="true"
+                                      th:attr="aria-labelledby=${'reject-' + row.appealId() + '-title'}"
+                                      th:action="@{/fines/appeals/{id}/reject(id=${row.appealId()})}" method="post">
+                                    <div class="modal__header">
+                                        <h2 class="modal__title" th:id="${'reject-' + row.appealId() + '-title'}">Reject this appeal?</h2>
+                                        <button type="button" class="icon-btn" data-modal-close aria-label="Close">
+                                            <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-x"></use></svg>
+                                        </button>
+                                    </div>
+                                    <div class="modal__body">
+                                        <p style="margin-bottom: var(--space-16);">The original fine stays payable in full.</p>
+                                        <div class="form-field">
+                                            <label class="form-field__label" th:for="${'comments-' + row.appealId()}">Comments *</label>
+                                            <textarea th:id="${'comments-' + row.appealId()}" name="comments" rows="3" required
+                                                      class="form-field__textarea"></textarea>
+                                            <p class="form-field__help">Shown to the member alongside the decision.</p>
+                                        </div>
+                                    </div>
+                                    <div class="modal__footer">
+                                        <button type="button" class="btn btn--secondary" data-modal-close>Cancel</button>
+                                        <button type="submit" class="btn btn--danger">Reject appeal</button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div class="modal-backdrop" th:if="${currentRoleNames.contains('Finance Officer')}"
+                                 th:attr="data-modal=${'refer-' + row.appealId()}" hidden>
+                                <form class="modal" role="dialog" aria-modal="true"
+                                      th:attr="aria-labelledby=${'refer-' + row.appealId() + '-title'}"
+                                      th:action="@{/fines/appeals/{id}/refer(id=${row.appealId()})}" method="post">
+                                    <div class="modal__header">
+                                        <h2 class="modal__title" th:id="${'refer-' + row.appealId() + '-title'}">Refer this appeal for correction?</h2>
+                                        <button type="button" class="icon-btn" data-modal-close aria-label="Close">
+                                            <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-x"></use></svg>
+                                        </button>
+                                    </div>
+                                    <div class="modal__body">
+                                        <p style="margin-bottom: var(--space-16);">The appeal stays Pending. An administrator will see it flagged as needing the amount checked before a decision.</p>
+                                        <div class="form-field">
+                                            <label class="form-field__label" th:for="${'note-' + row.appealId()}">Note *</label>
+                                            <textarea th:id="${'note-' + row.appealId()}" name="note" rows="3" required
+                                                      class="form-field__textarea"></textarea>
+                                            <p class="form-field__help">Explain what needs to be checked about the disputed calculation.</p>
+                                        </div>
+                                    </div>
+                                    <div class="modal__footer">
+                                        <button type="button" class="btn btn--secondary" data-modal-close>Cancel</button>
+                                        <button type="submit" class="btn btn--primary">Refer for correction</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div th:if="${#lists.isEmpty(rows)}">
+            <div th:replace="~{components/empty-state :: emptyState('octagon-alert', 'No pending appeals right now.', null, null)}"></div>
+        </div>
+    </section>
+
+</div>
+</body>
+</html>

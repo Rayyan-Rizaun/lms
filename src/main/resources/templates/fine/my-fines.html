@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<!-- UC-07 — "My Fines": every fine charged to the signed-in member, outstanding first (FineService#myFines). -->
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${pageTitle} + ' · Library Management System'">My Fines · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/toast :: flash(${flashSuccessTitle}, ${flashSuccessMessage}, ${flashErrorTitle}, ${flashErrorMessage})}"></div>
+
+    <div th:replace="~{components/page-header :: pageHeader('My Fines', 'Everything charged to your account.', null, null, null)}"></div>
+
+    <section class="panel">
+        <div th:if="${not #lists.isEmpty(rows)}" class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Type</th>
+                        <th scope="col">Book</th>
+                        <th scope="col" class="data-table__col-right">Assessed</th>
+                        <th scope="col" class="data-table__col-right">Paid</th>
+                        <th scope="col" class="data-table__col-right">Balance</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="data-table__col-right">Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="row : ${rows}">
+                        <td th:text="${row.fineType()}">Overdue</td>
+                        <td><a th:href="@{/fines/mine/{id}(id=${row.fineId()})}" class="book-title" th:text="${row.bookTitle()}">Title</a></td>
+                        <td class="data-table__col-right font-mono" th:text="${row.amountAssessed()}">100.00</td>
+                        <td class="data-table__col-right font-mono" th:text="${row.amountPaid()}">0.00</td>
+                        <td class="data-table__col-right font-mono" th:text="${row.balance()}">100.00</td>
+                        <td><span th:replace="~{components/status-pill :: statusPill('fine', ${row.status()})}"></span></td>
+                        <td class="data-table__col-right font-mono" th:text="${#temporals.format(row.assessedAt(), 'yyyy-MM-dd')}">2026-01-01</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div th:if="${#lists.isEmpty(rows)}">
+            <div th:replace="~{components/empty-state :: emptyState('wallet', 'You have no fines on your account.', null, null)}"></div>
+        </div>
+    </section>
+
+</div>
+</body>
+</html>

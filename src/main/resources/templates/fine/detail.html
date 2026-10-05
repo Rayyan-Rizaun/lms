@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<!--
+    UC-06, UC-07 — a member's own fine detail: how the amount was
+    calculated, every payment with its receipt number, and any appeal.
+    "Appeal" needs a modal (a reason field), which components/page-header's
+    own action slot can only ever render as a plain link — hand-built the
+    same way feedback/detail.html's own header is, for the same reason.
+-->
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${pageTitle} + ' · Library Management System'">Fine detail · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/toast :: flash(${flashSuccessTitle}, ${flashSuccessMessage}, ${flashErrorTitle}, ${flashErrorMessage})}"></div>
+
+    <div class="page-head">
+        <div class="page-head__row">
+            <div>
+                <h1 th:text="${fine.fineType()} + ' fine'">Overdue fine</h1>
+                <p class="page-head__desc book-title" th:text="${fine.bookTitle()}">Title</p>
+            </div>
+            <button type="button" th:if="${fine.appealable()}" class="btn btn--secondary" data-modal-trigger="submit-appeal">
+                <svg class="icon icon--sm" aria-hidden="true"><use href="/icons.svg#icon-octagon-alert"></use></svg>
+                <span>Appeal this fine</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="modal-backdrop" th:if="${fine.appealable()}" data-modal="submit-appeal" hidden>
+        <form class="modal" role="dialog" aria-modal="true" aria-labelledby="submit-appeal-title"
+              th:action="@{/fines/mine/{id}/appeal(id=${fine.fineId()})}" method="post" th:object="${appealForm}">
+            <div class="modal__header">
+                <h2 class="modal__title" id="submit-appeal-title">Appeal this fine?</h2>
+                <button type="button" class="icon-btn" data-modal-close aria-label="Close">
+                    <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-x"></use></svg>
+                </button>
+            </div>
+            <div class="modal__body">
+                <p style="margin-bottom: var(--space-16);">While your appeal is pending, this fine shows Under Appeal and cannot be paid.</p>
+                <div th:replace="~{components/form-field :: formField('reason', 'Reason', 'textarea', 'Explain why you believe this fine should be reduced or waived.', true, null, 4, null)}"></div>
+            </div>
+            <div class="modal__footer">
+                <button type="button" class="btn btn--secondary" data-modal-close>Cancel</button>
+                <button type="submit" class="btn btn--primary">Submit appeal</button>
+            </div>
+        </form>
+    </div>
+
+    <section class="panel">
+        <div class="panel__header">
+            <h2 class="panel__title">Details</h2>
+        </div>
+        <div class="panel__body" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--space-16);">
+            <div>
+                <p class="label-upper text-subtle">Status</p>
+                <p><span th:replace="~{components/status-pill :: statusPill('fine', ${fine.status()})}"></span></p>
+            </div>
+            <div>
+                <p class="label-upper text-subtle">Assessed</p>
+                <p class="font-mono" th:text="${fine.amountAssessed()}">100.00</p>
+            </div>
+            <div>
+                <p class="label-upper text-subtle">Paid so far</p>
+                <p class="font-mono" th:text="${fine.amountPaid()}">0.00</p>
+            </div>
+            <div>
+                <p class="label-upper text-subtle">Balance</p>
+                <p class="font-mono" th:text="${fine.balance()}">100.00</p>
+            </div>
+            <div>
+                <p class="label-upper text-subtle">Date assessed</p>
+                <p class="font-mono" th:text="${#temporals.format(fine.assessedAt(), 'yyyy-MM-dd')}">2026-01-01</p>
+            </div>
+        </div>
+
+        <!-- How the amount was calculated: Overdue is days x rate; Lost/Damaged is the copy's replacement cost. -->
+        <div class="panel__body" style="padding-top:0;">
+            <p class="label-upper text-subtle">How this was calculated</p>
+            <p th:if="${fine.daysOverdue() != null}"
+               th:text="${fine.daysOverdue()} + ' days overdue × LKR ' + ${fine.ratePerDay()} + ' per day = LKR ' + ${fine.amountAssessed()} + ' (capped at the per-loan maximum).'">
+                5 days overdue × LKR 20.00 per day = LKR 100.00.
+            </p>
+            <p th:if="${fine.replacementCost() != null}"
+               th:text="'Replacement cost of the copy: LKR ' + ${fine.replacementCost()} + '. ' + ${fine.incidentDescription()}">
+                Replacement cost of the copy: LKR 3500.00.
+            </p>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel__header">
+            <h2 class="panel__title">Payments</h2>
+        </div>
+        <div th:if="${not #lists.isEmpty(fine.payments())}" class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Receipt no.</th>
+                        <th scope="col">Method</th>
+                        <th scope="col" class="data-table__col-right">Amount</th>
+                        <th scope="col" class="data-table__col-right">Paid at</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="payment : ${fine.payments()}">
+                        <td class="font-mono" th:text="${payment.receiptNumber()}">RCT-2026-000000</td>
+                        <td th:text="${payment.method()}">Cash</td>
+                        <td class="data-table__col-right font-mono" th:text="${payment.amountPaid()}">50.00</td>
+                        <td class="data-table__col-right font-mono" th:text="${#temporals.format(payment.paidAt(), 'yyyy-MM-dd HH:mm')}">2026-01-01 10:00</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div th:if="${#lists.isEmpty(fine.payments())}" class="panel__body">
+            <p class="text-subtle">No payments recorded yet.</p>
+        </div>
+    </section>
+
+    <section class="panel" th:if="${fine.appeal() != null}">
+        <div class="panel__header">
+            <h2 class="panel__title">Appeal</h2>
+        </div>
+        <div class="panel__body" style="display:flex; flex-direction:column; gap: var(--space-16);">
+            <div class="cluster" style="justify-content:space-between;">
+                <span th:replace="~{components/status-pill :: statusPill('appeal', ${fine.appeal().status()})}"></span>
+                <span class="text-subtle font-mono" th:text="${#temporals.format(fine.appeal().submittedAt(), 'yyyy-MM-dd')}">2026-01-01</span>
+            </div>
+            <div>
+                <p class="label-upper text-subtle">Your reason</p>
+                <p th:text="${fine.appeal().reason()}">Reason text.</p>
+            </div>
+            <div th:if="${fine.appeal().decisionComments() != null}">
+                <p class="label-upper text-subtle">Staff comments</p>
+                <p th:text="${fine.appeal().decisionComments()}">Comments.</p>
+            </div>
+            <div th:if="${fine.appeal().approvedReduction() != null}">
+                <p class="label-upper text-subtle">Reduction approved</p>
+                <p class="font-mono" th:text="${fine.appeal().approvedReduction()}">50.00</p>
+            </div>
+        </div>
+    </section>
+
+</div>
+</body>
+</html>

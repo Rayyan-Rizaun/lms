@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<!-- UC-07 — "show the receipt after a successful payment." Shown once, via a flash attribute (see FineController#receipt). -->
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${pageTitle} + ' · Library Management System'">Receipt · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/page-header :: pageHeader('Payment recorded', null, null, null, null)}"></div>
+
+    <section class="panel" style="max-width: var(--modal-width);">
+        <div class="panel__header">
+            <h2 class="panel__title">Receipt</h2>
+        </div>
+        <div class="panel__body" style="display:flex; flex-direction:column; gap: var(--space-16);">
+
+            <div class="cluster" style="justify-content:space-between;">
+                <span class="label-upper text-subtle">Receipt no.</span>
+                <span class="font-mono" th:text="${receipt.receiptNumber()}">RCT-2026-000000</span>
+            </div>
+
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-16);">
+                <div>
+                    <p class="label-upper text-subtle">Member</p>
+                    <p th:text="${receipt.memberName()}">Name</p>
+                </div>
+                <div>
+                    <p class="label-upper text-subtle">Fine type</p>
+                    <p th:text="${receipt.fineType()}">Overdue</p>
+                </div>
+                <div>
+                    <p class="label-upper text-subtle">Amount paid</p>
+                    <p class="font-mono" th:text="${receipt.amountPaid()}">50.00</p>
+                </div>
+                <div>
+                    <p class="label-upper text-subtle">Method</p>
+                    <p th:text="${receipt.method()}">Cash</p>
+                </div>
+                <div>
+                    <p class="label-upper text-subtle">Paid at</p>
+                    <p class="font-mono" th:text="${#temporals.format(receipt.paidAt(), 'yyyy-MM-dd HH:mm')}">2026-01-01 10:00</p>
+                </div>
+                <div>
+                    <p class="label-upper text-subtle">Received by</p>
+                    <p th:text="${receipt.receivedByStaffName()}">Staff name</p>
+                </div>
+            </div>
+
+            <div class="cluster" style="justify-content:space-between; padding-top: var(--space-8); border-top: 1px solid var(--border);">
+                <span class="label-upper text-subtle">Remaining balance</span>
+                <span class="font-mono" th:text="${receipt.balanceRemaining()}">0.00</span>
+            </div>
+            <div class="cluster" style="justify-content:space-between;">
+                <span class="label-upper text-subtle">Fine status</span>
+                <span th:replace="~{components/status-pill :: statusPill('fine', ${receipt.newStatus()})}"></span>
+            </div>
+
+            <a th:href="@{/fines}" class="btn btn--primary">Back to Outstanding Fines</a>
+        </div>
+    </section>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<!-- UC-07 — record a payment against one fine. Staff-only. -->
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${pageTitle} + ' · Library Management System'">Record Payment · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/page-header :: pageHeader('Record Payment', null, null, null, null)}"></div>
+
+    <div class="layout-grid">
+        <section class="panel">
+            <div class="panel__header">
+                <h2 class="panel__title">Fine</h2>
+            </div>
+            <div class="panel__body" style="display:flex; flex-direction:column; gap: var(--space-8);">
+                <div class="cluster" style="justify-content:space-between;">
+                    <strong th:text="${fine.memberName()}">Name</strong>
+                    <span th:replace="~{components/status-pill :: statusPill('fine', ${fine.status()})}"></span>
+                </div>
+                <p class="text-subtle">
+                    <span th:text="${fine.membershipNo()}">MEM-2026-000000</span> ·
+                    <span th:text="${fine.fineType()} + ' fine'">Overdue fine</span>
+                </p>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: var(--space-16); padding-top: var(--space-8);">
+                    <div>
+                        <p class="label-upper text-subtle">Assessed</p>
+                        <p class="font-mono" th:text="${fine.amountAssessed()}">100.00</p>
+                    </div>
+                    <div>
+                        <p class="label-upper text-subtle">Paid so far</p>
+                        <p class="font-mono" th:text="${fine.amountPaid()}">0.00</p>
+                    </div>
+                    <div>
+                        <p class="label-upper text-subtle">Balance</p>
+                        <p class="font-mono" th:text="${fine.balance()}">100.00</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel__header">
+                <h2 class="panel__title">Payment</h2>
+            </div>
+            <div class="panel__body">
+                <form th:action="@{/fines/{id}/pay(id=${fine.fineId()})}" th:object="${paymentForm}" method="post"
+                      style="display:flex; flex-direction:column; gap: var(--space-16);">
+
+                    <div th:replace="~{components/form-field :: formField('amount', 'Amount (LKR)', 'number',
+                            'Cannot exceed the outstanding balance.', true, null, null, null)}"></div>
+
+                    <div th:replace="~{components/form-field :: formField('method', 'Payment method', 'select', null, true, ${methodOptions}, null, null)}"></div>
+
+                    <div class="cluster">
+                        <button type="submit" class="btn btn--primary">
+                            <svg class="icon icon--sm" aria-hidden="true"><use href="/icons.svg#icon-circle-check"></use></svg>
+                            Record payment
+                        </button>
+                        <a th:href="@{/fines}" class="btn btn--secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </section>
+    </div>
+
+</div>
+</body>
+</html>
