@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<!--
+    "My Account" — where LoginSuccessHandler sends anyone without a staff
+    role after login, and reachable from the topbar/sidebar by anyone
+    signed in. Uses the normal app shell (unlike login/register/reset,
+    this is a post-login page).
+
+    Property access below is plain dot notation (${x.y}), never ${x.y()} —
+    it has to work for both AccountView (a record, whose accessor really is
+    named y()) and Member/StaffProfile (Lombok @Getter entities, whose
+    accessor is getY()). Spring's property resolution tries both getY() and
+    a record-style y() for ${x.y}, so one spelling works everywhere; the
+    explicit-call spelling would only work for one of the two kinds.
+-->
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title>My Account · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/page-header :: pageHeader('My Account', 'Your profile and membership status.', null, null, null)}"></div>
+
+    <section class="panel">
+        <div class="panel__header">
+            <h2 class="panel__title">Profile</h2>
+        </div>
+        <div class="panel__body" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-16);">
+            <div>
+                <p class="label-upper text-subtle">Name</p>
+                <p th:text="${account.fullName}">Name</p>
+            </div>
+            <div>
+                <p class="label-upper text-subtle">Email</p>
+                <p th:text="${account.email}">email@example.com</p>
+            </div>
+            <div>
+                <p class="label-upper text-subtle">Phone</p>
+                <p class="font-mono" th:text="${account.phone}">+94 71 234 5678</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel" th:if="${account.member != null}" th:with="member=${account.member}">
+        <div class="panel__header">
+            <h2 class="panel__title">Membership</h2>
+        </div>
+        <div class="panel__body" style="display:flex; flex-direction:column; gap: var(--space-16);"
+             th:with="expired=${member.expiryDate != null and T(java.time.LocalDate).now().isAfter(member.expiryDate)}">
+
+            <!-- th:if/th:unless combined with th:replace on the SAME tag
+                 doesn't reliably respect the condition (README gotcha #2) —
+                 this rendered "Expired" for a brand-new, non-expired member
+                 until split across a wrapper (condition) and a plain child
+                 (fragment call), the same fix data-table.html and
+                 modal.html already use. -->
+            <div>
+                <p class="label-upper text-subtle">Status</p>
+                <th:block th:if="${expired}">
+                    <span th:replace="~{components/status-pill :: statusPill('membership', 'Expired')}"></span>
+                </th:block>
+                <th:block th:unless="${expired}">
+                    <span th:replace="~{components/status-pill :: statusPill('membership', ${member.membershipStatus})}"></span>
+                </th:block>
+            </div>
+
+            <div class="empty-state" style="align-items:flex-start; text-align:left; padding:0;" th:if="${account.pendingApproval}">
+                <p class="empty-state__text">Your registration is awaiting approval. A librarian or administrator reviews new
+                    memberships before borrowing and reservations unlock — there is nothing further for you to do.</p>
+            </div>
+
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-16);">
+                <div>
+                    <p class="label-upper text-subtle">Membership no.</p>
+                    <p class="font-mono" th:text="${member.membershipNo}">MEM-2026-000000</p>
+                </div>
+                <div>
+                    <p class="label-upper text-subtle">Member type</p>
+                    <p th:text="${member.memberType.dbValue}">Student</p>
+                </div>
+                <div>
+                    <p class="label-upper text-subtle">Joined</p>
+                    <p class="font-mono" th:text="${#temporals.format(member.joinedDate, 'yyyy-MM-dd')}">2026-01-01</p>
+                </div>
+                <div>
+                    <p class="label-upper text-subtle">Expires</p>
+                    <p class="font-mono" th:text="${#temporals.format(member.expiryDate, 'yyyy-MM-dd')}">2027-01-01</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel" th:if="${account.staff != null}" th:with="staff=${account.staff}">
+        <div class="panel__header">
+            <h2 class="panel__title">Staff position</h2>
+        </div>
+        <div class="panel__body" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-16);">
+            <div>
+                <p class="label-upper text-subtle">Job title</p>
+                <p th:text="${staff.jobTitle}">Librarian</p>
+            </div>
+            <div>
+                <p class="label-upper text-subtle">Employee no.</p>
+                <p class="font-mono" th:text="${staff.employeeNo}">E001</p>
+            </div>
+            <div>
+                <p class="label-upper text-subtle">Roles</p>
+                <p th:text="${#strings.setJoin(currentRoleNames, ', ')} ?: 'None assigned yet'">Librarian</p>
+            </div>
+        </div>
+    </section>
+
+</div>
+</body>
+</html>

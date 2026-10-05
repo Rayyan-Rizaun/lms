@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<!--
+    Public self-registration (backlog item PB-21). Same standalone-page
+    reasoning as login.html — not the signed-in app shell. Unlike login,
+    this form genuinely is bound to a command object (RegistrationForm), so
+    it uses components/form-field.html exactly as documented, inside
+    <form th:object="${registrationForm}">.
+-->
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+        (function () {
+            try {
+                var saved = localStorage.getItem('lms-theme');
+                if (saved === 'light' || saved === 'dark') {
+                    document.documentElement.setAttribute('data-theme', saved);
+                }
+            } catch (e) { /* localStorage unavailable — OS preference applies */ }
+        })();
+    </script>
+    <title th:text="${pageTitle} + ' · Library Management System'">Create an account · Library Management System</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}" />
+</head>
+<body>
+<div class="content" style="max-width: var(--modal-width); margin-inline: auto;">
+
+    <div class="sidebar__brand" style="justify-content: center; padding-block: var(--space-24);">
+        <svg class="icon icon--sm" aria-hidden="true"><use href="/icons.svg#icon-library-big"></use></svg>
+        <span class="sidebar__brand-name">Library Management System</span>
+    </div>
+
+    <!-- No apostrophe in this string: a ~{...} fragment expression's own
+         mini-parser does not honour \' escaping inside its argument list
+         (unlike a plain OGNL string elsewhere) — attoparser fails to parse
+         the whole expression if one is present, escaped or not. Rephrased
+         to avoid it rather than fight that parser. -->
+    <div th:replace="~{components/page-header :: pageHeader('Create an account', 'Your membership needs approval from a librarian before you can borrow or reserve — you can still sign in right away to check its status.', null, null, null)}"></div>
+
+    <section class="panel">
+        <div class="panel__body">
+            <form th:action="@{/register}" th:object="${registrationForm}" method="post"
+                  style="display:flex; flex-direction:column; gap: var(--space-16);">
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--space-16);">
+                    <div th:replace="~{components/form-field :: formField('firstName', 'First name', 'text', null, true, null, null, null)}"></div>
+                    <div th:replace="~{components/form-field :: formField('lastName', 'Last name', 'text', null, true, null, null, null)}"></div>
+                </div>
+
+                <div th:replace="~{components/form-field :: formField('email', 'Email', 'email', null, true, null, null, null)}"></div>
+
+                <div th:replace="~{components/form-field :: formField('nationalId', 'NIC', 'text',
+                        'Old format: 9 digits + V. New format: 12 digits.', true, null, null, '200012345678')}"></div>
+
+                <div th:replace="~{components/form-field :: formField('phone', 'Phone', 'tel', null, true, null, null, '+94 71 234 5678')}"></div>
+
+                <div th:replace="~{components/form-field :: formField('addressLine1', 'Address', 'text', null, true, null, null, null)}"></div>
+                <div th:replace="~{components/form-field :: formField('addressLine2', 'Address (line 2)', 'text', null, false, null, null, null)}"></div>
+                <div th:replace="~{components/form-field :: formField('city', 'City', 'text', null, true, null, null, null)}"></div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--space-16);">
+                    <div th:replace="~{components/form-field :: formField('password', 'Password', 'password',
+                            'At least 8 characters.', true, null, null, null)}"></div>
+                    <div th:replace="~{components/form-field :: formField('confirmPassword', 'Confirm password', 'password', null, true, null, null, null)}"></div>
+                </div>
+
+                <button type="submit" class="btn btn--primary">
+                    <svg class="icon icon--sm" aria-hidden="true"><use href="/icons.svg#icon-user-plus"></use></svg>
+                    Create account
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <p style="text-align:center; padding-block: var(--space-16); color: var(--ink-2);">
+        New here? <a th:href="@{/register}">Create an account</a>
+        &nbsp;·&nbsp;
+        <a th:href="@{/catalogue/books}">Browse the catalogue</a>
+    </p>
+</div>
+
+<div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="false"></div>
+<script th:src="@{/js/app-shell.js}"></script>
+</body>
+</html>
