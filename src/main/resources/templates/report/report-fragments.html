@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<tr th:fragment="borrowingRow">
+    <td th:text="${row.memberType()}">Student</td>
+    <td th:text="${row.categoryName()}">Category</td>
+    <td class="data-table__col-right font-mono" th:text="${row.loanCount()}">12</td>
+</tr>
+<tr th:fragment="overdueRow">
+    <td th:text="${row.memberName()}">Name</td>
+    <td><span class="book-title" th:text="${row.bookTitle()}">Title</span></td>
+    <td class="data-table__col-right font-mono" th:text="${#temporals.format(row.dueAt(), 'yyyy-MM-dd')}">2026-01-01</td>
+    <td class="data-table__col-right font-mono" th:text="${row.daysOverdue()}">5</td>
+    <td class="data-table__col-right font-mono" th:text="${row.fineAccrued()}">100.00</td>
+</tr>
+<tr th:fragment="finesRow">
+    <td th:text="${row.fineType()}">Overdue</td>
+    <td class="data-table__col-right font-mono" th:text="${row.assessed()}">100.00</td>
+    <td class="data-table__col-right font-mono" th:text="${row.collected()}">50.00</td>
+    <td class="data-table__col-right font-mono" th:text="${row.waived()}">0.00</td>
+    <td class="data-table__col-right font-mono" th:text="${row.outstanding()}">50.00</td>
+</tr>
+<tr th:fragment="reservationsRow">
+    <td><span class="book-title" th:text="${row.bookTitle()}">Title</span></td>
+    <td class="data-table__col-right font-mono" th:text="${row.requested()}">4</td>
+    <td class="data-table__col-right font-mono" th:text="${row.fulfilled()}">2</td>
+    <td class="data-table__col-right font-mono" th:text="${row.expired()}">1</td>
+    <td class="data-table__col-right font-mono" th:text="${row.currentQueueLength()}">1</td>
+</tr>
+<tr th:fragment="usersRow">
+    <td th:text="${row.memberType()}">Student</td>
+    <td class="data-table__col-right font-mono" th:text="${row.registrations()}">3</td>
+    <td class="data-table__col-right font-mono" th:text="${row.active()}">40</td>
+    <td class="data-table__col-right font-mono" th:text="${row.suspended()}">2</td>
+</tr>
+<tr th:fragment="inventoryStatusRow">
+    <td th:text="${row.status()}">Available</td>
+    <td class="data-table__col-right font-mono" th:text="${row.count()}">30</td>
+</tr>
+<tr th:fragment="inventoryTitleRow">
+    <td><span class="book-title" th:text="${row.bookTitle()}">Title</span></td>
+    <td class="data-table__col-right font-mono" th:text="${row.value()}">3</td>
+</tr>
+<tr th:fragment="reviewsRow">
+    <td><span class="book-title" th:text="${row.bookTitle()}">Title</span></td>
+    <td class="data-table__col-right font-mono" th:text="${row.submitted()}">5</td>
+    <td class="data-table__col-right font-mono" th:text="${row.approved()}">3</td>
+    <td class="data-table__col-right font-mono" th:text="${row.rejected()}">1</td>
+    <td class="data-table__col-right font-mono" th:text="${row.averageRating()} ?: '—'">4.2</td>
+</tr>
+<tr th:fragment="feedbackRow">
+    <td th:text="${row.categoryName()}">Category</td>
+    <td th:text="${row.status()}">Submitted</td>
+    <td class="data-table__col-right font-mono" th:text="${row.count()}">7</td>
+</tr>
+<tr th:fragment="historyRow">
+    <td th:text="${row.requestedByName()}">Name</td>
+    <td th:text="${row.reportType()}">BorrowedBooks</td>
+    <td class="font-mono" th:text="${row.filterJson()}">{}</td>
+    <td class="data-table__col-right font-mono" th:text="${#temporals.format(row.generatedAt(), 'yyyy-MM-dd HH:mm')}">2026-01-01 10:00</td>
+</tr>
+</body>
+</html>

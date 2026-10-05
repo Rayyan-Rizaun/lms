@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${pageTitle} + ' · Library Management System'">Reviews Report · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/toast :: flash(${flashSuccessTitle}, ${flashSuccessMessage}, ${flashErrorTitle}, ${flashErrorMessage})}"></div>
+
+    <div th:replace="~{components/page-header :: pageHeader('Reviews Report', 'Submitted, approved, rejected counts and average rating by book.', 'All Reports', @{/reports}, null)}"></div>
+
+    <section class="panel">
+        <div class="panel__body">
+            <form method="get" th:action="@{/reports/reviews}" class="cluster" style="align-items:flex-end;">
+                <div class="form-field" style="margin:0;">
+                    <label class="form-field__label" for="from">From</label>
+                    <input type="date" id="from" name="from" th:value="${from}" class="form-field__input" />
+                </div>
+                <div class="form-field" style="margin:0;">
+                    <label class="form-field__label" for="to">To</label>
+                    <input type="date" id="to" name="to" th:value="${to}" class="form-field__input" />
+                </div>
+                <button type="submit" class="btn btn--primary">Run report</button>
+            </form>
+        </div>
+    </section>
+
+    <div th:replace="~{components/stat-tile :: statTileRow(${tiles})}"></div>
+
+    <section class="panel">
+        <div th:replace="~{components/data-table :: dataTable(${columns}, ${rows}, ~{report/report-fragments :: reviewsRow},
+                null, null, 'star', 'No reviews submitted in this range.', null, null)}"></div>
+    </section>
+
+</div>
+</body>
+</html>
