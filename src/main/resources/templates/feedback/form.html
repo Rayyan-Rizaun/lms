@@ -1,0 +1,44 @@
+
+<!DOCTYPE html>
+<!--
+    UC-10 — one shared form for both submit (POST /feedback) and edit
+    (POST /feedback/{id}/edit), the same "formAction/pageTitle" pattern
+    catalogue/book-form.html already uses for create vs edit. Any
+    signed-in member (Library Member or Academic Staff Member).
+-->
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${pageTitle} + ' · Library Management System'">Feedback · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/page-header :: pageHeader(${pageTitle}, 'Tell us about service, facilities, or anything else on your mind.', null, null, null)}"></div>
+
+    <section class="panel">
+        <div class="panel__body">
+            <form th:action="@{${formAction}}" th:object="${feedbackForm}" method="post"
+                  style="display:flex; flex-direction:column; gap: var(--space-16);">
+
+                <div style="display:grid; grid-template-columns: 2fr 1fr; gap: var(--space-16);">
+                    <div th:replace="~{components/form-field :: formField('categoryId', 'Category', 'select', null, true, ${categoryOptions}, null, null)}"></div>
+                    <div th:replace="~{components/form-field :: formField('priority', 'Priority', 'select', null, true, ${priorityOptions}, null, null)}"></div>
+                </div>
+
+                <div th:replace="~{components/form-field :: formField('subject', 'Subject', 'text', null, true, null, null, null)}"></div>
+
+                <div th:replace="~{components/form-field :: formField('description', 'Description', 'textarea',
+                        'As much detail as you can share.', true, null, 6, null)}"></div>
+
+                <div class="cluster">
+                    <button type="submit" class="btn btn--primary">Save</button>
+                    <a th:href="@{/feedback}" class="btn btn--secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </section>
+
+</div>
+</body>
+</html>

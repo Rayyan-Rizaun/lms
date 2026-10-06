@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<!--
+    UC-02 — create/edit a Book. Staff-only (SecurityConfig requires
+    authentication for everything under /catalogue except the list/detail
+    GETs; BookService's create/update methods are @PreAuthorize-gated to
+    Librarian / Library Administrator on top of that).
+
+    Uses the full app shell, unlike login/register — an authenticated
+    staff member reaching this page always has the real sidebar/topbar
+    already, so there is no "guest sees a wrong full shell" concern here
+    the way there was for the anonymous auth pages.
+
+    categoryIds IS HAND-WRITTEN, NOT components/form-field. That fragment
+    has no multi-select type (see BookForm's own javadoc) — this is the
+    same kind of small, commented exception reset-password.html already
+    makes for its hidden token field, applied to a checkbox group instead.
+-->
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${pageTitle} + ' · Library Management System'">Book · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/page-header :: pageHeader(${pageTitle}, null, null, null, null)}"></div>
+
+    <section class="panel">
+        <div class="panel__body">
+            <form th:action="${formAction}" th:object="${bookForm}" method="post"
+                  style="display:flex; flex-direction:column; gap: var(--space-16);">
+
+                <div style="display:grid; grid-template-columns: 2fr 1fr; gap: var(--space-16);">
+                    <div th:replace="~{components/form-field :: formField('title', 'Title', 'text', null, true, null, null, null)}"></div>
+                    <div th:replace="~{components/form-field :: formField('subtitle', 'Subtitle', 'text', null, false, null, null, null)}"></div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--space-16);">
+                    <div th:replace="~{components/form-field :: formField('isbn13', 'ISBN-13', 'text',
+                            'Exactly 13 digits, no dashes.', true, null, null, 'e.g. 9780132350884')}"></div>
+                    <div th:replace="~{components/form-field :: formField('isbn10', 'ISBN-10', 'text',
+                            'Optional. 9 digits then a digit or X.', false, null, null, null)}"></div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-16);">
+                    <div th:replace="~{components/form-field :: formField('authorId', 'Primary author', 'select', null, true, ${authorOptions}, null, null)}"></div>
+                    <div th:replace="~{components/form-field :: formField('publisherId', 'Publisher', 'select', null, false, ${publisherOptions}, null, null)}"></div>
+                    <div th:replace="~{components/form-field :: formField('publicationYear', 'Publication year', 'number',
+                            'Leave blank if unknown.', false, null, null, 'e.g. 2024')}"></div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--space-16);">
+                    <div th:replace="~{components/form-field :: formField('edition', 'Edition', 'text', null, false, null, null, 'e.g. 3rd')}"></div>
+                    <div th:replace="~{components/form-field :: formField('languageCode', 'Language code', 'text',
+                            '2-3 lowercase letters, e.g. en.', true, null, null, null)}"></div>
+                </div>
+
+                <!-- Hand-written checkbox group — see header comment. Reuses the
+                     exact .form-field / .form-field__label / .cluster classes
+                     every other field on this page uses, so it looks identical
+                     to a generated field even though it is not one. -->
+                <div class="form-field">
+                    <label class="form-field__label">Categories</label>
+                    <div class="cluster">
+                        <label th:each="cat : ${categoryCheckboxes}"
+                               style="display:inline-flex; align-items:center; gap: var(--space-8); font-weight:400;">
+                            <input type="checkbox" th:name="categoryIds" th:value="${cat.categoryId}"
+                                   th:checked="${bookForm.categoryIds != null and bookForm.categoryIds.contains(cat.categoryId)}" />
+                            <span th:text="${cat.categoryName}">Category</span>
+                        </label>
+                    </div>
+                    <p th:if="${#lists.isEmpty(categoryCheckboxes)}" class="form-field__help">
+                        No categories yet — <a th:href="@{/catalogue/categories/new}">add one</a> first.
+                    </p>
+                </div>
+
+                <div th:replace="~{components/form-field :: formField('keywords', 'Keywords', 'text',
+                        'Comma-separated, used by search — e.g. sql, database, algorithms.', false, null, null, null)}"></div>
+
+                <div th:replace="~{components/form-field :: formField('description', 'Description', 'textarea', null, false, null, 5, null)}"></div>
+
+                <div class="cluster">
+                    <button type="submit" class="btn btn--primary">Save</button>
+                    <a th:if="${bookId != null}" th:href="@{/catalogue/books/{id}(id=${bookId})}" class="btn btn--secondary">Cancel</a>
+                    <a th:unless="${bookId != null}" th:href="@{/catalogue/books}" class="btn btn--secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </section>
+
+</div>
+</body>
+</html>

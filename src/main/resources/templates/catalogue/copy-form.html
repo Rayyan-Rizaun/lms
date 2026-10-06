@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<!-- UC-02 inventory — create/edit one BookCopy. Staff-only, always reached from that book's detail page. -->
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${pageTitle} + ' · Library Management System'">Copy · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/page-header :: pageHeader(${pageTitle}, null, null, null, null)}"></div>
+
+    <p class="text-subtle">
+        Copy of <a th:href="@{/catalogue/books/{id}(id=${book.bookId})}" class="book-title" th:text="${book.title}">Title</a>
+    </p>
+
+    <section class="panel">
+        <div class="panel__body">
+            <form th:action="${formAction}" th:object="${copyForm}" method="post"
+                  style="display:flex; flex-direction:column; gap: var(--space-16);">
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--space-16);">
+                    <div th:replace="~{components/form-field :: formField('accessionNumber', 'Accession number', 'text', null, true, null, null, null)}"></div>
+                    <div th:replace="~{components/form-field :: formField('barcode', 'Barcode', 'text', null, true, null, null, null)}"></div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--space-16);">
+                    <div th:replace="~{components/form-field :: formField('shelfLocation', 'Shelf location', 'text', null, false, null, null, 'e.g. A1-01')}"></div>
+                    <div th:replace="~{components/form-field :: formField('acquisitionDate', 'Acquisition date', 'date', null, true, null, null, null)}"></div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-16);">
+                    <div th:replace="~{components/form-field :: formField('purchasePrice', 'Purchase price (LKR)', 'number',
+                            'Used for lost/damaged replacement charges.', true, null, null, null)}"></div>
+                    <div th:replace="~{components/form-field :: formField('copyCondition', 'Condition', 'select', null, true, ${conditionOptions}, null, null)}"></div>
+                    <div th:replace="~{components/form-field :: formField('referenceOnly', 'Reference only', 'select',
+                            'Reference copies never circulate.', true, ${yesNoOptions}, null, null)}"></div>
+                </div>
+
+                <div class="cluster">
+                    <button type="submit" class="btn btn--primary">Save</button>
+                    <a th:href="@{/catalogue/books/{id}(id=${book.bookId})}" class="btn btn--secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </section>
+
+</div>
+</body>
+</html>

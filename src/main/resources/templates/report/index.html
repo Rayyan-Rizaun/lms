@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${pageTitle} + ' · Library Management System'">Reports and Analytics · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/page-header :: pageHeader('Reports and Analytics', 'Pick a report to run it against a date range and its own filters.',
+            ${currentRoleNames.contains('Library Administrator')} ? 'Report History' : null,
+            ${currentRoleNames.contains('Library Administrator')} ? @{/reports/history} : null, 'archive')}"></div>
+
+    <section class="panel">
+        <div class="panel__body" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-16);">
+            <a th:each="report : ${reports}" th:href="@{'/reports/' + ${report.key()}}"
+               style="display:block; padding: var(--space-16); border: 1px solid var(--border); border-radius: 10px; text-decoration:none; color:inherit;">
+                <div class="cluster" style="margin-bottom: var(--space-8);">
+                    <svg class="icon" aria-hidden="true"><use th:attr="href='/icons.svg#icon-' + ${report.icon()}"></use></svg>
+                    <strong th:text="${report.title()}">Report</strong>
+                </div>
+                <p class="text-subtle" th:text="${report.description()}">Description.</p>
+            </a>
+        </div>
+    </section>
+
+</div>
+</body>
+</html>

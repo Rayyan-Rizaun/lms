@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<!--
+    UC-10 — staff "Feedback": search by reference/member/subject, filter by
+    status/category/priority, sortable columns, pagination. Library
+    Administrator only (docs/scenarios.pdf's own "Supporting Actor").
+
+    SORTING AND PAGINATION ARE HAND-BUILT, NOT components/data-table's or
+    components/pagination's own header/page links — same reason
+    catalogue/books.html's own are: a click on a column header or a page
+    number must not silently drop q / status / categoryId / priority.
+    templates/components/README.md's data-table section says exactly this.
+-->
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${pageTitle} + ' · Library Management System'">Feedback · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/toast :: flash(${flashSuccessTitle}, ${flashSuccessMessage}, ${flashErrorTitle}, ${flashErrorMessage})}"></div>
+
+    <div th:replace="~{components/page-header :: pageHeader('Feedback', 'Every submission from every member.', null, null, null)}"></div>
+
+    <section class="panel">
+        <div class="panel__body">
+            <form method="get" th:action="@{/feedback/manage}" class="cluster" style="align-items:flex-end;">
+                <div class="form-field" style="flex:2 1 220px; margin:0;">
+                    <label class="form-field__label" for="q">Search</label>
+                    <input type="search" id="q" name="q" th:value="${q}" class="form-field__input"
+                           placeholder="Reference, member or subject" />
+                </div>
+                <div class="form-field" style="flex:1 1 160px; margin:0;">
+                    <label class="form-field__label" for="status">Status</label>
+                    <select id="status" name="status" class="form-field__select">
+                        <option th:each="opt : ${statusOptions}" th:value="${opt.value()}" th:text="${opt.label()}"
+                                th:selected="${opt.value() == (status != null ? status : '')}">Status</option>
+                    </select>
+                </div>
+                <div class="form-field" style="flex:1 1 160px; margin:0;">
+                    <label class="form-field__label" for="categoryId">Category</label>
+                    <select id="categoryId" name="categoryId" class="form-field__select">
+                        <option th:each="opt : ${categoryOptions}" th:value="${opt.value()}" th:text="${opt.label()}"
+                                th:selected="${opt.value() == (categoryId != null ? categoryId.toString() : '')}">Category</option>
+                    </select>
+                </div>
+                <div class="form-field" style="flex:1 1 140px; margin:0;">
+                    <label class="form-field__label" for="priority">Priority</label>
+                    <select id="priority" name="priority" class="form-field__select">
+                        <option th:each="opt : ${priorityOptions}" th:value="${opt.value()}" th:text="${opt.label()}"
+                                th:selected="${opt.value() == (priority != null ? priority : '')}">Priority</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn--primary">
+                    <svg class="icon icon--sm" aria-hidden="true"><use href="/icons.svg#icon-search"></use></svg>
+                    Search
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div th:if="${not #lists.isEmpty(rows)}" class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th th:each="col : ${columns}" scope="col"
+                            th:classappend="${col.align() == 'right'} ? 'data-table__col-right' : ''"
+                            th:with="sortable=${col.sortable()},
+                                     active=${sortable and #strings.equals(col.sortKey(), currentSort)},
+                                     nextDir=${#strings.equals(currentDir, 'asc')} ? 'desc' : 'asc',
+                                     ariaSortValue=${not sortable} ? null : (${not active} ? 'none' : (${#strings.equals(currentDir, 'desc')} ? 'descending' : 'ascending'))"
+                            th:aria-sort="${ariaSortValue}">
+                            <a th:if="${sortable}" class="data-table__sort"
+                               th:href="@{/feedback/manage(q=${q}, status=${status}, categoryId=${categoryId}, priority=${priority},
+                                                            sort=${col.sortKey()}, dir=${active} ? ${nextDir} : 'asc')}">
+                                <span th:text="${col.label()}">Label</span>
+                                <svg class="icon" aria-hidden="true">
+                                    <use th:if="${active and #strings.equals(currentDir, 'asc')}" href="/icons.svg#icon-chevron-up"></use>
+                                    <use th:if="${active and #strings.equals(currentDir, 'desc')}" href="/icons.svg#icon-chevron-down"></use>
+                                    <use th:unless="${active}" href="/icons.svg#icon-chevrons-up-down"></use>
+                                </svg>
+                            </a>
+                            <span th:unless="${sortable}" th:text="${col.label()}">Label</span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="row : ${rows}">
+                        <td><a class="font-mono" th:href="@{/feedback/manage/{id}(id=${row.feedbackId()})}" th:text="${row.reference()}">FB-2026-000000</a></td>
+                        <td th:text="${row.memberName()}">Member Name</td>
+                        <td th:text="${row.subject()}">Subject</td>
+                        <td th:text="${row.categoryName()}">Category</td>
+                        <td th:text="${row.priority()}">Medium</td>
+                        <td><span th:replace="~{components/status-pill :: statusPill('feedback', ${row.status()})}"></span></td>
+                        <td class="data-table__col-right font-mono" th:text="${#temporals.format(row.submittedAt(), 'yyyy-MM-dd')}">2026-01-01</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div th:if="${#lists.isEmpty(rows)}">
+            <div th:replace="~{components/empty-state :: emptyState('search', 'No feedback matches your filters.', null, null)}"></div>
+        </div>
+
+        <!-- Hand-built for the same reason the header links above are: it
+             must carry q / status / categoryId / priority, which
+             components/pagination's own ?page=N-only links would drop.
+             firstItem/lastItem come from the controller (a plain long),
+             not an inline Math.min(int, long) here. -->
+        <nav th:if="${not #lists.isEmpty(rows)}" class="pagination" aria-label="Pagination"
+             th:with="windowStart=${T(java.lang.Math).max(1, page - 2)},
+                      windowEnd=${T(java.lang.Math).min(totalPages, page + 2)}">
+            <p class="pagination__range">
+                Showing <span class="font-mono" th:text="${firstItem} + '–' + ${lastItem}">1–20</span>
+                of <span class="font-mono" th:text="${totalItems}">214</span>
+            </p>
+            <div class="pagination__controls">
+                <a th:if="${page > 1}" class="icon-btn" aria-label="Previous page"
+                   th:href="@{/feedback/manage(q=${q}, status=${status}, categoryId=${categoryId}, priority=${priority}, sort=${currentSort}, dir=${currentDir}, page=${page - 1})}">
+                    <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-chevron-left"></use></svg>
+                </a>
+                <button th:unless="${page > 1}" type="button" class="icon-btn" disabled aria-label="Previous page">
+                    <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-chevron-left"></use></svg>
+                </button>
+
+                <a th:each="p : ${#numbers.sequence(windowStart, windowEnd)}" th:text="${p}"
+                   th:href="@{/feedback/manage(q=${q}, status=${status}, categoryId=${categoryId}, priority=${priority}, sort=${currentSort}, dir=${currentDir}, page=${p})}"
+                   class="pagination__page" th:classappend="${p == page} ? 'is-current' : ''"
+                   th:attr="aria-current=${p == page} ? 'page' : null">1</a>
+
+                <a th:if="${page < totalPages}" class="icon-btn" aria-label="Next page"
+                   th:href="@{/feedback/manage(q=${q}, status=${status}, categoryId=${categoryId}, priority=${priority}, sort=${currentSort}, dir=${currentDir}, page=${page + 1})}">
+                    <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-chevron-right"></use></svg>
+                </a>
+                <button th:unless="${page < totalPages}" type="button" class="icon-btn" disabled aria-label="Next page">
+                    <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-chevron-right"></use></svg>
+                </button>
+            </div>
+        </nav>
+    </section>
+
+</div>
+</body>
+</html>

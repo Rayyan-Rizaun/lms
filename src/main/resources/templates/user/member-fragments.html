@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<!--
+    Row fragments for user/pending-members.html and user/all-members.html —
+    a companion file, not inside either real page, same reason as every
+    other *-fragments.html in this app (templates/components/README.md).
+-->
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<tr th:fragment="pendingRow">
+    <td th:text="${row.name()}">Name</td>
+    <td class="font-mono" th:text="${row.membershipNo()}">MEM-2026-000001</td>
+    <td th:text="${row.email()}">member@example.com</td>
+    <td class="font-mono" th:text="${row.nationalId()}">200012345678</td>
+    <td class="font-mono" th:text="${row.phone()}">0771234567</td>
+    <td th:text="${row.memberType()}">Student</td>
+    <td class="data-table__col-right font-mono" th:text="${#temporals.format(row.joinedDate(), 'yyyy-MM-dd')}">2026-01-01</td>
+    <td>
+        <div class="cluster">
+            <button type="button" class="btn btn--secondary" th:attr="data-modal-trigger=${'approve-' + row.memberId()}">Approve</button>
+            <button type="button" class="btn btn--danger" th:attr="data-modal-trigger=${'reject-' + row.memberId()}">Reject</button>
+        </div>
+
+        <div th:replace="~{components/confirm-dialog :: confirmDialog(${'approve-' + row.memberId()},
+                'Approve this membership?',
+                'The member becomes Active immediately and can start borrowing books.',
+                'Approve', 'Cancel', @{/users/pending/{id}/approve(id=${row.memberId()})}, false)}"></div>
+
+        <div class="modal-backdrop" th:attr="data-modal=${'reject-' + row.memberId()}" hidden>
+            <form class="modal" role="dialog" aria-modal="true"
+                  th:attr="aria-labelledby=${'reject-' + row.memberId() + '-title'}"
+                  th:action="@{/users/pending/{id}/reject(id=${row.memberId()})}" method="post">
+                <div class="modal__header">
+                    <h2 class="modal__title" th:id="${'reject-' + row.memberId() + '-title'}">Reject this registration?</h2>
+                    <button type="button" class="icon-btn" data-modal-close aria-label="Close">
+                        <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-x"></use></svg>
+                    </button>
+                </div>
+                <div class="modal__body">
+                    <p style="margin-bottom: var(--space-16);">The registration stays on record under the Rejected filter — it is never deleted.</p>
+                    <div class="form-field">
+                        <label class="form-field__label" th:for="${'reason-' + row.memberId()}">Reason *</label>
+                        <textarea th:id="${'reason-' + row.memberId()}" name="reason" rows="3" required
+                                  class="form-field__textarea"></textarea>
+                        <p class="form-field__help">Shown to the applicant.</p>
+                    </div>
+                </div>
+                <div class="modal__footer">
+                    <button type="button" class="btn btn--secondary" data-modal-close>Cancel</button>
+                    <button type="submit" class="btn btn--danger">Reject registration</button>
+                </div>
+            </form>
+        </div>
+    </td>
+</tr>
+
+<tr th:fragment="rejectedRow">
+    <td th:text="${row.name()}">Name</td>
+    <td class="font-mono" th:text="${row.membershipNo()}">MEM-2026-000001</td>
+    <td th:text="${row.email()}">member@example.com</td>
+    <td class="font-mono" th:text="${row.nationalId()}">200012345678</td>
+    <td class="font-mono" th:text="${row.phone()}">0771234567</td>
+    <td th:text="${row.memberType()}">Student</td>
+    <td class="data-table__col-right font-mono" th:text="${#temporals.format(row.joinedDate(), 'yyyy-MM-dd')}">2026-01-01</td>
+    <td><span th:replace="~{components/status-pill :: statusPill('membership', 'Cancelled')}"></span></td>
+</tr>
+
+<tr th:fragment="allMemberRow">
+    <td th:text="${row.name()}">Name</td>
+    <td class="font-mono" th:text="${row.membershipNo()}">MEM-2026-000001</td>
+    <td th:text="${row.email()}">member@example.com</td>
+    <td th:text="${row.memberType()}">Student</td>
+    <td><span th:replace="~{components/status-pill :: statusPill('membership', ${row.membershipStatus()})}"></span></td>
+    <td class="data-table__col-right font-mono" th:text="${#temporals.format(row.joinedDate(), 'yyyy-MM-dd')}">2026-01-01</td>
+    <td>
+        <div th:if="${row.canSuspend()}">
+            <button type="button" class="btn btn--secondary" th:attr="data-modal-trigger=${'suspend-' + row.memberId()}">Suspend</button>
+
+            <div class="modal-backdrop" th:attr="data-modal=${'suspend-' + row.memberId()}" hidden>
+                <form class="modal" role="dialog" aria-modal="true"
+                      th:attr="aria-labelledby=${'suspend-' + row.memberId() + '-title'}"
+                      th:action="@{/users/all/{id}/suspend(id=${row.memberId()})}" method="post">
+                    <div class="modal__header">
+                        <h2 class="modal__title" th:id="${'suspend-' + row.memberId() + '-title'}">Suspend this member?</h2>
+                        <button type="button" class="icon-btn" data-modal-close aria-label="Close">
+                            <svg class="icon" aria-hidden="true"><use href="/icons.svg#icon-x"></use></svg>
+                        </button>
+                    </div>
+                    <div class="modal__body">
+                        <p style="margin-bottom: var(--space-16);" th:text="${'Blocks borrowing and reservations for ' + row.name() + ' until reactivated. Refused if they have any active loan.'}">
+                            Blocks borrowing and reservations until reactivated.
+                        </p>
+                        <div class="form-field">
+                            <label class="form-field__label" th:for="${'reason-' + row.memberId()}">Reason *</label>
+                            <textarea th:id="${'reason-' + row.memberId()}" name="reason" rows="3" required
+                                      class="form-field__textarea"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal__footer">
+                        <button type="button" class="btn btn--secondary" data-modal-close>Cancel</button>
+                        <button type="submit" class="btn btn--danger">Suspend member</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div th:if="${row.canReactivate()}">
+            <button type="button" class="btn btn--secondary" th:attr="data-modal-trigger=${'reactivate-' + row.memberId()}">Reactivate</button>
+            <div th:replace="~{components/confirm-dialog :: confirmDialog(${'reactivate-' + row.memberId()},
+                    'Reactivate this member?',
+                    'The member becomes Active again and can resume borrowing and reservations.',
+                    'Reactivate', 'Cancel', @{/users/all/{id}/reactivate(id=${row.memberId()})}, false)}"></div>
+        </div>
+
+        <a th:if="${row.pendingApproval()}" th:href="@{/users/pending}" class="text-subtle">Pending approval</a>
+    </td>
+</tr>
+
+</body>
+</html>

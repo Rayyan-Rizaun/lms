@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title th:text="${pageTitle} + ' · Library Management System'">My Reviews · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/toast :: flash(${flashSuccessTitle}, ${flashSuccessMessage}, ${flashErrorTitle}, ${flashErrorMessage})}"></div>
+
+    <div th:replace="~{components/page-header :: pageHeader('My Reviews', 'Ratings and reviews you have submitted.', 'Browse Books', @{/catalogue/books}, 'book-open')}"></div>
+
+    <section class="panel">
+        <div th:if="${not #lists.isEmpty(rows)}" class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Book</th>
+                        <th scope="col" class="data-table__col-right">Rating</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="data-table__col-right">Submitted</th>
+                        <th scope="col"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="row : ${rows}">
+                        <td><a th:href="@{/catalogue/books/{id}(id=${row.bookId()})}" class="book-title" th:text="${row.bookTitle()}">Title</a></td>
+                        <td class="data-table__col-right font-mono" th:text="${row.rating()} + ' / 5'">4 / 5</td>
+                        <td><span th:replace="~{components/status-pill :: statusPill('review', ${row.status()})}"></span></td>
+                        <td class="data-table__col-right font-mono" th:text="${#temporals.format(row.submittedAt(), 'yyyy-MM-dd')}">2026-01-01</td>
+                        <td>
+                            <th:block th:if="${row.status() != 'Removed'}">
+                                <button type="button" class="btn btn--secondary" th:attr="data-modal-trigger=${'confirm-remove-' + row.reviewId()}">
+                                    Remove
+                                </button>
+                                <div th:replace="~{components/confirm-dialog :: confirmDialog(${'confirm-remove-' + row.reviewId()},
+                                        'Remove this review?',
+                                        'It will no longer be shown, even if it was already published. This cannot be undone.',
+                                        'Remove', 'Cancel', @{/reviews/{id}/remove(id=${row.reviewId()}, bookId=${row.bookId()})}, true)}"></div>
+                            </th:block>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div th:if="${#lists.isEmpty(rows)}">
+            <div th:replace="~{components/empty-state :: emptyState('star', 'You have not reviewed any books yet.', 'Browse Books', @{/catalogue/books})}"></div>
+        </div>
+    </section>
+
+</div>
+</body>
+</html>

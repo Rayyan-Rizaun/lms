@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: shell(~{::title}, ~{::#content})}">
+<head>
+    <title>Dashboard · Library Management System</title>
+</head>
+<body>
+<div id="content">
+
+    <div th:replace="~{components/toast :: flash(${flashSuccessTitle}, ${flashSuccessMessage}, ${flashErrorTitle}, ${flashErrorMessage})}"></div>
+
+    <div th:replace="~{components/page-header :: pageHeader('Dashboard', 'Circulation, inventory and fines across the whole system, right now.', null, null, null)}"></div>
+
+    <div th:replace="~{components/stat-tile :: statTileRow(${dashboard.tiles()})}"></div>
+
+    <div class="layout-grid">
+        <section class="panel">
+            <div class="panel__header"><h2 class="panel__title">Loans per month</h2></div>
+            <div th:if="${dashboard.loansPerMonth().isEmpty()}" class="chart-container chart-container--empty">
+                <div th:replace="~{components/empty-state :: emptyState('chart-column', 'No loans issued in this period yet.', null, null)}"></div>
+            </div>
+            <div th:unless="${dashboard.loansPerMonth().isEmpty()}" class="chart-container">
+                <canvas id="chart-loans-per-month"></canvas>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel__header"><h2 class="panel__title">Copies by status</h2></div>
+            <div th:if="${dashboard.copiesByStatus().isEmpty()}" class="chart-container chart-container--empty">
+                <div th:replace="~{components/empty-state :: emptyState('book-open', 'No copies in the catalogue yet.', null, null)}"></div>
+            </div>
+            <div th:unless="${dashboard.copiesByStatus().isEmpty()}" class="chart-container">
+                <canvas id="chart-copies-by-status"></canvas>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel__header"><h2 class="panel__title">Fines assessed vs collected</h2></div>
+            <div th:if="${dashboard.finesAssessedVsCollected().isEmpty()}" class="chart-container chart-container--empty">
+                <div th:replace="~{components/empty-state :: emptyState('wallet', 'No fines assessed in this period yet.', null, null)}"></div>
+            </div>
+            <div th:unless="${dashboard.finesAssessedVsCollected().isEmpty()}" class="chart-container">
+                <canvas id="chart-fines"></canvas>
+            </div>
+        </section>
+    </div>
+
+    <div class="layout-grid">
+        <section class="panel">
+            <div class="panel__header"><h2 class="panel__title">Recent Audit Entries</h2></div>
+            <div class="panel__body" th:if="${#lists.isEmpty(dashboard.recentAuditEntries())}">
+                <div th:replace="~{components/empty-state :: emptyState('archive', 'Nothing has happened yet.', null, null)}"></div>
+            </div>
+            <div class="data-table-container" th:unless="${#lists.isEmpty(dashboard.recentAuditEntries())}">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">User</th>
+                            <th scope="col">Action</th>
+                            <th scope="col">Entity</th>
+                            <th scope="col" class="data-table__col-right">Occurred at</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="row : ${dashboard.recentAuditEntries()}">
+                            <td th:text="${row.userName()}">System</td>
+                            <td th:text="${row.actionName()}">UPDATE</td>
+                            <td th:text="${row.entityName()}">Fine</td>
+                            <td class="data-table__col-right font-mono" th:text="${#temporals.format(row.occurredAt(), 'yyyy-MM-dd HH:mm')}">2026-01-01 00:00</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel__header"><h2 class="panel__title">Oldest Pending Approvals</h2></div>
+            <div class="panel__body" th:if="${#lists.isEmpty(dashboard.oldestPendingApprovals())}">
+                <div th:replace="~{components/empty-state :: emptyState('user-plus', 'No registrations are waiting on a decision.', 'Membership Approval', @{/users/pending})}"></div>
+            </div>
+            <div class="data-table-container" th:unless="${#lists.isEmpty(dashboard.oldestPendingApprovals())}">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Name</th>
+                            <th scope="col">Membership no.</th>
+                            <th scope="col">Member type</th>
+                            <th scope="col" class="data-table__col-right">Registered</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="row : ${dashboard.oldestPendingApprovals()}">
+                            <td><a th:href="@{/users/pending}" th:text="${row.name()}">Name</a></td>
+                            <td class="font-mono" th:text="${row.membershipNo()}">MEM-2026-000001</td>
+                            <td th:text="${row.memberType()}">Student</td>
+                            <td class="data-table__col-right font-mono" th:text="${#temporals.format(row.joinedDate(), 'yyyy-MM-dd')}">2026-01-01</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script th:src="@{/js/chart.umd.min.js}"></script>
+    <script th:src="@{/js/charts.js}"></script>
+    <script th:inline="javascript">
+    /*<![CDATA[*/
+        const loansPerMonth = /*[[${dashboard.loansPerMonth()}]]*/ {labels:[],datasets:[]};
+        const copiesByStatus = /*[[${dashboard.copiesByStatus()}]]*/ {labels:[],datasets:[]};
+        const finesData = /*[[${dashboard.finesAssessedVsCollected()}]]*/ {labels:[],datasets:[]};
+
+        if (loansPerMonth.labels.length) {
+            LMS.charts.line('chart-loans-per-month', loansPerMonth, {title: 'Loans issued, last 6 months', yTitle: 'Loans'});
+        }
+        if (copiesByStatus.labels.length) {
+            const statusColorOf = {
+                'Available': LMS.charts.cssVar('--available'),
+                'On Loan': LMS.charts.cssVar('--on-loan'),
+                'On Hold': LMS.charts.cssVar('--reserved'),
+                'Under Repair': LMS.charts.cssVar('--due-soon'),
+                'Damaged': LMS.charts.cssVar('--lost'),
+                'Lost': LMS.charts.cssVar('--lost'),
+                'Withdrawn': LMS.charts.cssVar('--lost')
+            };
+            LMS.charts.doughnut('chart-copies-by-status', copiesByStatus, {
+                title: 'Copies by status',
+                colors: copiesByStatus.labels.map(l => statusColorOf[l] || LMS.charts.cssVar('--ink-3'))
+            });
+        }
+        if (finesData.labels.length) {
+            LMS.charts.bar('chart-fines', finesData, {title: 'Fines assessed vs collected, last 6 months', yTitle: 'LKR'});
+        }
+    /*]]>*/
+    </script>
+
+</div>
+
+</body>
+</html>
